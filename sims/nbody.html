@@ -14,6 +14,7 @@
 
         canvas {
         display: block;
+        cursor: crosshair;
         }
     </style>
 </head>
@@ -38,7 +39,14 @@
     function toScreen(wx, wy) {
         return {
             x: camX + wx * camScale,
-            y: camY + wy * camScale
+            y: camY - wy * camScale
+        };
+    }
+
+    function fromScreen(sx, sy) {
+        return {
+            x: (sx - camX) / camScale,
+            y: -(sy - camY) / camScale
         };
     }
 
@@ -63,19 +71,20 @@
         this.color = opts.color;
         this.radius = opts.radius;
         this.fixed  = opts.fixed || false;
+        this.alive = true;
     }
 
     var bodies = [
         new Body({
-            name: "Sun",
-            mass: 1,
-            x: 0,
-            y: 0,
-            vx: 0,
-            vy: 0,
-            color: "#FDB813",
-            radius: 14,
-            fixed: true
+             name: "Sun",     
+             mass: 1,
+             x: 0,
+             y: 0,
+             vx: 0,
+             vy: 0,
+             color: "#FDB813",
+             radius: 14,
+             fixed: true
         }),
         new Body({
             name: 'Mercury',
@@ -116,46 +125,175 @@
             vy: 5.09,
             color: '#c1440e',
             radius: 4
-        })
+        }),
+        new Body({
+            name: 'Jupiter',
+            mass: 9.5e-4,
+            x: 5.2,
+            y: 0,
+            vx: 0,
+            vy: 2.755,
+            color: '#c88b3a',
+            radius: 10
+        }),
+        new Body({
+            name: 'Saturn',
+            mass: 2.85e-4,
+            x: 9.54,
+            y: 0,
+            vx: 0,
+            vy: 2.03,
+            color: '#e6c58f',
+            radius: 9
+        }),
+        new Body({
+            name: 'Uranus',
+            mass: 4.36e-5,
+            x: 19.19,
+            y: 0,
+            vx: 0,
+            vy: 1.43,
+            color: '#4fd0e7',
+            radius: 7
+        }),
+        new Body({
+            name: 'Neptune',
+            mass: 5.15e-5,
+            x: 30.07,
+            y: 0,
+            vx: 0,
+            vy: 1.14,
+            color: '#4c6ef5',
+            radius: 7
+        }),
     ];
 
     var simTime = 0;
-    var lastTime = null;
+    var FIXED_DT = 0.002;
 
-    function eulerSTEP(dt) {
-        var i,j
-
-        for (i=0; i < bodies.length; i++) {
-            var b = bodies[i];
-            if (b.fixed) continue;
-
-            var ax = 0;
-            var ay = 0;
-
-            for (j=0; j < bodies.length; j++) {
-                if (i === j) continue;
-                var other = bodies[j];
-
-                var dx = other.x - b.x;
-                var dy = other.y - b.y;
-                var distSq = dx * dx + dy * dy;
-                var dist = Math.sqrt(distSq);
-                var f = G * other.mass / (distSq * dist);
-                
-                ax += f * dx;
-                ay += f * dy;
+    function accel(bodies) {
+        var n = bodies.length;
+        var ax = new Float64Array(n);
+        var ay = new Float64Array(n);
+        for (var i = 0; i < n; i++) {
+            if (!bodies[i].alive || bodies[i].fixed) continue;
+            for (var j = 0; j < n; j++) {
+                if (i === j || !bodies[j].alive) continue;
+                var dx = bodies[j].x - bodies[i].x;
+                var dy = bodies[j].y - bodies[i].y;
+                var distSq = dx*dx + dy*dy;
+                var dist   = Math.sqrt(distSq);
+                var f      = G * bodies[j].mass / (distSq * dist);
+                ax[i] += f * dx;
+                ay[i] += f * dy;
             }
+        }
+        return {ax: ax, ay : ay};
 
-            b.vx += ax * dt;
-            b.vy += ay * dt;
+    }
+
+    function rk4(bodies, dt) {
+        var n = bodies.length;
+        var i;
+        var x0 = [], y0 = [], vx0 = [], vy0 = [];
+        for (i = 0; i < n; i++) {
+            x0.push(bodies[i].x);
+            y0.push(bodies[i].y);
+            vx0.push(bodies[i].vx);
+            vy0.push(bodies[i].vy);
         }
 
-        for (i = 0; i < bodies.length; i++) {
-            if (bodies[i].fixed) continue;
-            bodies[i].x += bodies[i].vx * dt;
-            bodies[i].y += bodies[i].vy * dt;
+        function gd(xs, ys, vxs, vys) {
+            var sx = [], sy = [];
+            for (var ii = 0; ii < n; ii++) {
+                sx.push(bodies[ii].x);
+                sy.push(bodies[ii].y);
+                bodies[ii].x = xs[ii];
+                bodies[ii].y = ys[ii];
+            }
+            var res = accel(bodies);
+            for (var ii = 0; ii < n; ii++) {
+                bodies[ii].x = sx[ii];
+                bodies[ii].y = sy[ii];
+            }
+            var dvxs = [], dvys = [];
+            for (var ii = 0; ii < n; ii++) {
+                dvxs.push(res.ax[ii]);
+                dvys.push(res.ay[ii]);
+            }
+            return {
+                dxs: vxs,
+                dys: vys,
+                dvxs: dvxs,
+                dvys: dvys
+            };
+        }
+
+        var k1 = gd(x0, y0, vx0, vy0);
+        var x1 = [], y1 = [], vx1 = [], vy1 = [];
+        for (i = 0; i < n; i++) {
+            x1.push(x0[i]+.5*dt*k1.dxs[i]);
+            y1.push(y0[i]+.5*dt*k1.dys[i]);
+            vx1.push(vx0[i]+.5*dt*k1.dvxs[i]);
+            vy1.push(vy0[i]+.5*dt*k1.dvys[i]);
+        }
+        var k2 = gd(x1, y1, vx1, vy1);
+        var x2 = [], y2 = [], vx2 = [], vy2 = [];
+        for (i = 0; i < n; i++) {
+            x2.push(x0[i]+.5*dt*k2.dxs[i]);
+            y2.push(y0[i]+.5*dt*k2.dys[i]);
+            vx2.push(vx0[i]+.5*dt*k2.dvxs[i]);
+            vy2.push(vy0[i]+.5*dt*k2.dvys[i]);
+        }
+        var k3 = gd(x2, y2, vx2, vy2);
+        var x3 = [], y3 = [], vx3 = [], vy3 = [];
+        for (i = 0; i < n; i++) {
+            x3.push(x0[i]+dt*k3.dxs[i]);
+            y3.push(y0[i]+dt*k3.dys[i]);
+            vx3.push(vx0[i]+dt*k3.dvxs[i]);
+            vy3.push(vy0[i]+dt*k3.dvys[i]);
+        }  
+        var k4 = gd(x3, y3, vx3, vy3);
+        for (i = 0; i < n; i++) {
+            if (!bodies[i].alive || bodies[i].fixed) continue;
+            bodies[i].x  = x0[i]  + (dt/6)*(k1.dxs[i]  + 2*k2.dxs[i]  + 2*k3.dxs[i]  + k4.dxs[i]);
+            bodies[i].y  = y0[i]  + (dt/6)*(k1.dys[i]  + 2*k2.dys[i]  + 2*k3.dys[i]  + k4.dys[i]);
+            bodies[i].vx = vx0[i] + (dt/6)*(k1.dvxs[i] + 2*k2.dvxs[i] + 2*k3.dvxs[i] + k4.dvxs[i]);
+            bodies[i].vy = vy0[i] + (dt/6)*(k1.dvys[i] + 2*k2.dvys[i] + 2*k3.dvys[i] + k4.dvys[i]);
         }
     }
+
+    var isDragging = false;
+     var dragStartX = 0;
+    var dragStartY = 0;
+
+    canvas.addEventListener("mousedown", function(e) {
+        isDragging = true;
+        dragStartX = e.offsetX;
+        dragStartY = e.offsetY;
+    });
+
+    window.addEventListener('mouseup', function() {
+        isDragging = false;
+    });
+    window.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        var rect = canvas.getBoundingClientRect();
+        var ox = e.clientX - rect.left;
+        var oy = e.clientY - rect.top;
+        camX += ox - dragStartX;
+        camY += oy - dragStartY;
+        dragStartX = ox;
+        dragStartY = oy;
+    });
+
+    canvas.addEventListener("wheel", function(e) {
+        e.preventDefault();
+        var factor = e.deltaY < 0 ? 1.12 : 0.89;
+        camX = e.offsetX - (e.offsetX - camX) * factor;
+        camY = e.offsetY - (e.offsetY - camY) * factor;
+        camScale *= factor;
+    }, { passive: false });
 
     function draw() {
         ctx.fillStyle = "#000";
@@ -167,47 +305,36 @@
             var alpha = 0.3 + 0.5 * Math.abs(Math.sin(s.a));
             ctx.beginPath();
             ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(200, 212, 240,' + alpha + ')';
+            ctx.fillStyle = 'rgba(200, 212, 240, ' + alpha + ')';
             ctx.fill();
         }
 
-        ctx.fillStyle = 'rgba(57, 255, 133, 0.4)';
+        ctx.fillStyle = 'rgba(57,255,133,0.4)';
         ctx.font = '11px monospace';
         ctx.fillText('t = ' + simTime.toFixed(3) + ' yr', 12, 20);
-
         for (var i = 0; i < bodies.length; i++) {
-            var b = bodies[i];
-            var pos = toScreen(b.x, b.y);
-
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, b.radius, 0, Math.PI * 2);
-            ctx.fillStyle = b.color;
-            ctx.fill();
-
-            ctx.fillStyle = 'rgba(200, 213, 224, 0.6)';
-            ctx.font = '10px monospace';
-            ctx.fillText(b.name, pos.x + b.radius + 4, pos.y + 4);
+        var b = bodies[i];
+        if (!b.alive) continue;
+        var pos = toScreen(b.x, b.y);
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, b.radius, 0, Math.PI * 2);
+        ctx.fillStyle = b.color;
+        ctx.fill();
+        ctx.fillStyle = 'rgba(200, 213, 224, 0.6)';
+        ctx.font = '10px monospace';
+        ctx.fillText(b.name, pos.x + b.radius + 4, pos.y + 4);
         }
     }
 
-    function animate(ts) {
-            requestAnimationFrame(animate);
+    function animate() {
+        requestAnimationFrame(animate);
+        rk4(bodies, FIXED_DT);
+        simTime += FIXED_DT;
+        draw();
+    }
 
-            if (lastTime === null) lastTime = ts;
-            var dt = (ts - lastTime) / 1000;
-            lastTime = ts;
+    animate();
 
-            if (dt > 0.05) dt = 0.05;
-
-            // convert real time to simulation time (1 sec = 0.05 yrs in sim. time)
-            var simDt = dt * 0.05;
-
-            eulerSTEP(simDt);
-            simTime += simDt;
-            draw();
-        }
-
-    animate(0);
 
     </script>
 
