@@ -6,92 +6,209 @@
     <title>N-Body Simulator</title>
     <link rel="stylesheet" href="../css/main.css">
     <style>
+        body {
+        margin: 0;
+        background: #000;
+        font-family: monospace;
+        }
+
         canvas {
         display: block;
-        margin: 40px auto;
-        background: #000;
-        border: 1px solid var(--border);
         }
     </style>
 </head>
 
 <body>
-    <nav>
-        <span class="nav-logo">Physics</span>
-        <span>Sim.</span>
-        <a href="../index.html">Home</a>
-        <span class="nav-spacer"></span>
-        <span class="nav-status">RUNNING</span>
-    </nav>
-    
-    <canvas id="sim" width="800" height="500"></canvas>
+    <canvas id="simCanvas"></canvas>
 
     <script>
-    const canvas = document.getElementById("sim");
-    const ctx = canvas.getContext("2d");
+    var canvas = document.getElementById("simCanvas");
+    var ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    const G = 0.2;
+    var W = canvas.width;
+    var H = canvas.height;
+    var G = 4 * Math.PI * Math.PI;
 
-    const bodies = [
-    { x: 400, y: 250, vx: 0, vy: 0, mass: 2000, r: 12 },
-    { x: 400, y: 130, vx: 2.3, vy: 0, mass: 10, r: 5 }
+    var camScale = 80;
+    var camX = W / 2;
+    var camY = H / 2;
+
+    function toScreen(wx, wy) {
+        return {
+            x: camX + wx * camScale,
+            y: camY + wy * camScale
+        };
+    }
+
+    var STARS = [];
+    for (var i = 0; i < 200; i++) {
+        STARS.push({
+            x: Math.random(),
+            y: Math.random(),
+            r: Math.random() * 1.2 + 0.2,
+            a: Math.random() * Math.PI * 2,
+            spd: Math.random() * 0.003 + 0.001
+        });
+    }
+
+    function Body(opts) {
+        this.name = opts.name;
+        this.mass = opts.mass;
+        this.x = opts.x;
+        this.y = opts.y;
+        this.vx = opts.vx;
+        this.vy = opts.vy;
+        this.color = opts.color;
+        this.radius = opts.radius;
+        this.fixed  = opts.fixed || false;
+    }
+
+    var bodies = [
+        new Body({
+            name: "Sun",
+            mass: 1,
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            color: "#FDB813",
+            radius: 14,
+            fixed: true
+        }),
+        new Body({
+            name: 'Mercury',
+            mass: 1.65e-7,
+            x: 0.387,
+            y: 0,
+            vx: 0,
+            vy: 10.06,
+            color: '#b5b5b5',
+            radius: 3
+        }),
+        new Body({
+            name: 'Venus',
+            mass: 2.45e-6,
+            x: 0.723,
+            y: 0,
+            vx: 0,
+            vy: 7.38,
+            color: '#e8c07a',
+            radius: 4
+        }),
+        new Body({
+            name: 'Earth',
+            mass: 3e-6,
+            x: 1,
+            y: 0,
+            vx: 0,
+            vy: 6.283,
+            color: '#4fc3f7',
+            radius: 5
+        }),
+        new Body({
+            name: 'Mars',
+            mass: 3.2e-7,
+            x: 1.524,
+            y: 0,
+            vx: 0,
+            vy: 5.09,
+            color: '#c1440e',
+            radius: 4
+        })
     ];
 
-    function update() {
+    var simTime = 0;
+    var lastTime = null;
 
-    for (let i = 0; i < bodies.length; i++) {
+    function eulerSTEP(dt) {
+        var i,j
 
-        let ax = 0;
-        let ay = 0;
+        for (i=0; i < bodies.length; i++) {
+            var b = bodies[i];
+            if (b.fixed) continue;
 
-        for (let j = 0; j < bodies.length; j++) {
+            var ax = 0;
+            var ay = 0;
 
-        if (i === j) continue;
+            for (j=0; j < bodies.length; j++) {
+                if (i === j) continue;
+                var other = bodies[j];
 
-        const dx = bodies[j].x - bodies[i].x;
-        const dy = bodies[j].y - bodies[i].y;
+                var dx = other.x - b.x;
+                var dy = other.y - b.y;
+                var distSq = dx * dx + dy * dy;
+                var dist = Math.sqrt(distSq);
+                var f = G * other.mass / (distSq * dist);
+                
+                ax += f * dx;
+                ay += f * dy;
+            }
 
-        let dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 5) dist = 5;
-
-        const force = G * bodies[j].mass / (dist * dist);
-
-        ax += force * dx / dist;
-        ay += force * dy / dist;
+            b.vx += ax * dt;
+            b.vy += ay * dt;
         }
 
-        bodies[i].vx += ax;
-        bodies[i].vy += ay;
-    }
-
-    for (let body of bodies) {
-        body.x += body.vx;
-        body.y += body.vy;
-    }
+        for (i = 0; i < bodies.length; i++) {
+            if (bodies[i].fixed) continue;
+            bodies[i].x += bodies[i].vx * dt;
+            bodies[i].y += bodies[i].vy * dt;
+        }
     }
 
     function draw() {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (var i = 0; i < STARS.length; i++) {
+            var s = STARS[i];
+            s.a += s.spd;
+            var alpha = 0.3 + 0.5 * Math.abs(Math.sin(s.a));
+            ctx.beginPath();
+            ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(200, 212, 240,' + alpha + ')';
+            ctx.fill();
+        }
 
-    for (let i = 0; i < bodies.length; i++) {
+        ctx.fillStyle = 'rgba(57, 255, 133, 0.4)';
+        ctx.font = '11px monospace';
+        ctx.fillText('t = ' + simTime.toFixed(3) + ' yr', 12, 20);
 
-        ctx.beginPath();
-        ctx.arc(bodies[i].x, bodies[i].y, bodies[i].r, 0, Math.PI * 2);
+        for (var i = 0; i < bodies.length; i++) {
+            var b = bodies[i];
+            var pos = toScreen(b.x, b.y);
 
-        ctx.fillStyle = i === 0 ? "#ffb83f" : "#4fc3f7";
-        ctx.fill();
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, b.radius, 0, Math.PI * 2);
+            ctx.fillStyle = b.color;
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(200, 213, 224, 0.6)';
+            ctx.font = '10px monospace';
+            ctx.fillText(b.name, pos.x + b.radius + 4, pos.y + 4);
+        }
     }
-    }
 
-    function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
-    }
+    function animate(ts) {
+            requestAnimationFrame(animate);
 
-    loop();
+            if (lastTime === null) lastTime = ts;
+            var dt = (ts - lastTime) / 1000;
+            lastTime = ts;
+
+            if (dt > 0.05) dt = 0.05;
+
+            // convert real time to simulation time (1 sec = 0.05 yrs in sim. time)
+            var simDt = dt * 0.05;
+
+            eulerSTEP(simDt);
+            simTime += simDt;
+            draw();
+        }
+
+    animate(0);
+
     </script>
 
 </body>
