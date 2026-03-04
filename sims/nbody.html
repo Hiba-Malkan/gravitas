@@ -16,11 +16,75 @@
         display: block;
         cursor: crosshair;
         }
+
+        #controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: #39ff85;
+            font-size: 11px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 12px;
+            border: 1px solid rgba(57,255,133,0.2);
+        }
+
+        #controls label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+        }
+
+        #controls select, #controls input[type='range']{
+            background: #111;
+            border: 1px solid #333;
+            color: #ccc;
+            font-family: monospace;
+            font-size: 10px;
+        }
     </style>
 </head>
 
 <body>
     <canvas id="simCanvas"></canvas>
+
+    <div id="controls">
+        <label>
+            <input type="checkbox" id="toggleTrails" checked>
+            Trails
+        </label>
+        <label>
+            <input type="checkbox" id="toggleLabels" checked>
+            Labels
+        </label>
+        <label>
+            <input type="checkbox" id="toggleNotify" checked>
+            Notification
+        </label>
+        </label>
+            <div style="margin-bottom: 5px;">
+                Vel Mode: 
+                <select id="addVelMode">
+                    <option value="circular">Circular orbit</option>
+                    <option value="zero">Zero velocity</option>
+                    <option value="random">Random</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 5px;">
+                Mass:
+                <select id="addMass">
+                    <option value="3e-6">Earth (3e-6)</option>
+                    <option value="1e-7">Small (1e-7)</option>
+                    <option value="1e-4">Jupiter (1e-4)</option>
+                    <option value="0.5">Star (0.5)</option>
+                </select>
+            </div>
+            <div>
+                Eccen:
+                <input type="number" id="eccSlider" min="0" max="0.9" step="0.05" value="0" style="width: 80px";>
+                <span id="eccVal">0</span>
+            </div>
 
     <script>
     var canvas = document.getElementById("simCanvas");
@@ -32,9 +96,15 @@
     var H = canvas.height;
     var G = 4 * Math.PI * Math.PI;
 
-    var camScale = 80;
+    var camScale = 35;
     var camX = W / 2;
     var camY = H / 2;
+
+    var softening = 0.001;
+    var softeningSquared = softening * softening;
+
+    var showTrails = true;
+    var showLabels = true;
 
     function toScreen(wx, wy) {
         return {
@@ -48,6 +118,15 @@
             x: (sx - camX) / camScale,
             y: -(sy - camY) / camScale
         };
+    }
+
+    function showNotification(msg) {
+        var el = document.getElementById('notification');
+        el.textContent = msg;
+        el.style.opacity = 1;
+        setTimeout(function() {
+            el.style.opacity = 0;
+        }, 3000);
     }
 
     var STARS = [];
@@ -72,6 +151,15 @@
         this.radius = opts.radius;
         this.fixed  = opts.fixed || false;
         this.alive = true;
+        this.history = [];
+        this.maxTrail = 500;
+    }
+
+    Body.prototype.recordTrail = function() {
+        this.history.push({x: this.x, y: this.y, age: 0});
+        if (this.history.length > this.maxTrail) {
+            this.history.splice(0, 1);
+        }
     }
 
     var bodies = [
@@ -181,7 +269,7 @@
                 if (i === j || !bodies[j].alive) continue;
                 var dx = bodies[j].x - bodies[i].x;
                 var dy = bodies[j].y - bodies[i].y;
-                var distSq = dx*dx + dy*dy;
+                var distSq = dx*dx + dy*dy + softeningSquared;
                 var dist   = Math.sqrt(distSq);
                 var f      = G * bodies[j].mass / (distSq * dist);
                 ax[i] += f * dx;
@@ -263,12 +351,51 @@
         }
     }
 
+    function mergeCollisions(bodies) {
+        var i, j;
+        for (i = 0; i < bodies.length; i++) {
+            if (!bodies[i].alive) continue;
+            for (j = i + 1; j < bodies.length; j++) {
+                if (!bodies[j].alive) continue;
+                var dx = bodies[j].x - bodies[i].x;
+                var dy = bodies[j].y - bodies[i].y;
+                var dist = Math.sqrt(dx*dx + dy*dy);
+                var minDist = Math.max((bodies[i].radius + bodies[j].radius) * 0.0005, 0.01);
+                if (dist < minDist) {
+                    var big = bodies[i].mass > bodies[j].mass ? bodies[i] : bodies[j];
+                    var small = big === bodies[i] ? bodies[j] : bodies[i];
+                    if (!big.fixed) {
+                        big.vx = (big.vx * big.mass + small.vx * small.mass) / (big.mass + small.mass);
+                        big.vy = (big.vy * big.mass + small.vy * small.mass) / (big.mass + small.mass);
+                        big.mass = big.mass + small.mass;
+                        var nr = big.radius + small.radius * 0.4;
+                        big.radius = nr > 24? 24 : nr;
+
+                    }
+                    small.alive = false;
+                }
+            }
+        }
+        for (i = 0; i < bodies.length; i++) {
+            if (!bodies[i].alive || bodies[i].fixed) continue;
+            var d = Math.sqrt(bodies[i].x * bodies[i].x + bodies[i].y * bodies[i].y);
+            if (d > 50) {
+                bodies[i].alive = false;
+                if (document.getElementById('toggleNotify').checked) {
+                    showNotification(bodies[i].name + ' ejected from system');
+                }
+            }
+        }
+    }
+
     var isDragging = false;
-     var dragStartX = 0;
+    var dragStartX = 0;
     var dragStartY = 0;
+    var hasDragged = false;
 
     canvas.addEventListener("mousedown", function(e) {
         isDragging = true;
+        hasDragged = false;
         dragStartX = e.offsetX;
         dragStartY = e.offsetY;
     });
@@ -278,6 +405,7 @@
     });
     window.addEventListener('mousemove', function(e) {
         if (!isDragging) return;
+        hasDragged = true;
         var rect = canvas.getBoundingClientRect();
         var ox = e.clientX - rect.left;
         var oy = e.clientY - rect.top;
@@ -295,6 +423,91 @@
         camScale *= factor;
     }, { passive: false });
 
+    var BODY_COLORS = ['#ff9f43','#ee5a24','#0abde3','#10ac84','#f368e0','#ff6b6b','#a29bfe','#fd79a8'];
+
+    canvas.addEventListener('click', function(e) {
+        if (hasDragged) return;
+        var pos = fromScreen(e.offsetX, e.offsetY);
+        var alive = bodies.filter(function(b) { return b.alive; });
+        var totalMass = 0;
+        var comX = 0;
+        var comY = 0;
+        for (var i = 0; i < alive.length; i++) {
+            totalMass += alive[i].mass;
+            comX += alive[i].mass * alive[i].x;
+            comY += alive[i].mass * alive[i].y;
+        }
+        if (totalMass > 0) {
+            comX /= totalMass;
+            comY /= totalMass;
+        }
+        var vx = 0, vy = 0;
+        var velMode = document.getElementById('addVelMode').value;
+        var ecc = parseFloat(document.getElementById('eccSlider').value);
+        if (velMode === 'circular') {
+            var closest = null;
+            var closestDist = Infinity;
+            for (var i = 0; i < alive.length; i++) {
+                if (alive[i].mass < 1e-5) continue;
+                var ddx = pos.x - alive[i].x;
+                var ddy = pos.y - alive[i].y;
+                var d = Math.sqrt(ddx*ddx + ddy*ddy);
+                if (d < closestDist) {
+                    closestDist = d;
+                    closest = alive[i];
+                }
+            }
+            var orbitMass = totalMass;
+            var orbitX = comX;
+            var orbitY = comY;
+            if (closest && closestDist < 5) {
+                orbitMass = closest.mass;
+                orbitX = closest.x;
+                orbitY = closest.y;
+            }
+            var relX = pos.x - orbitX;
+            var relY = pos.y - orbitY;
+            var orbitR = Math.sqrt(relX*relX + relY*relY);
+            var circSpeed = orbitR > 0.01 ? Math.sqrt(G * orbitMass / orbitR) : 2;
+            var adjSpeed = circSpeed * Math.sqrt((1 - ecc)/(1+ecc));
+            var angle = Math.atan2(relY, relX) + Math.PI / 2;
+            vx = adjSpeed * Math.cos(angle);
+            vy = adjSpeed * Math.sin(angle);
+        } else if (velMode === 'random') {
+            var spd = Math.random() * 4 + 1;
+            var ang = Math.random() * Math.PI * 2;
+            vx = spd * Math.cos(ang);
+            vy = spd * Math.sin(ang);
+        }
+        var m = parseFloat(document.getElementById('addMass').value);
+        var r = m > 0.1? 12: m > 1e-4? 8:5;
+        bodies.push(new Body({
+            name: 'Body ' + (alive.length+1),
+            mass: m,
+            x: pos.x,
+            y: pos.y,
+            vx: vx,
+            vy: vy,
+            color: BODY_COLORS[bodies.length % BODY_COLORS.length],
+            radius: r
+        }));
+    });
+
+    document.getElementById('toggleTrails').addEventListener('change', function(e) {
+        showTrails = e.target.checked;
+        if (!showTrails) {
+            for (var i = 0; i < bodies.length; i++) {
+                bodies[i].history = [];
+            }
+        }
+    });
+    document.getElementById('toggleLabels').addEventListener('change', function(e) {
+        showLabels = e.target.checked;
+    });
+    document.getElementById('eccSlider').addEventListener('input', function() {
+        document.getElementById('eccVal').textContent = parseFloat(this.value).toFixed(1);
+    });
+
     function draw() {
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, W, H);
@@ -309,26 +522,70 @@
             ctx.fill();
         }
 
+        if (showTrails) {
+            for (var i = 0; i < bodies.length; i++) {
+                var b = bodies[i];
+                if (!b.alive || b.history.length<2) continue;
+                for (var j=1; j < b.history.length; j++) {
+                    var p0 = b.history[j-1];
+                    var p1 = b.history[j];
+                    var maxAge = Math.max(p0.age, p1.age, 1);
+                    if (maxAge > 600) continue;
+                    var ta = 0.5 * (1- maxAge / 600);
+                    if (ta <= 0.02) continue;
+                    var s0 = toScreen(p0.x, p0.y);
+                    var s1 = toScreen(p1.x, p1.y);
+                    var aInt = Math.round(ta * 255);
+                    var aHex = aInt.toString(16);
+                    if (aHex.length === 1) aHex = '0' + aHex;
+                    ctx.beginPath();
+                    ctx.moveTo(s0.x, s0.y);
+                    ctx.lineTo(s1.x, s1.y);
+                    ctx.strokeStyle = b.color + aHex;
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                }
+            }
+        }
+
         ctx.fillStyle = 'rgba(57,255,133,0.4)';
         ctx.font = '11px monospace';
         ctx.fillText('t = ' + simTime.toFixed(3) + ' yr', 12, 20);
+
         for (var i = 0; i < bodies.length; i++) {
-        var b = bodies[i];
-        if (!b.alive) continue;
-        var pos = toScreen(b.x, b.y);
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, b.radius, 0, Math.PI * 2);
-        ctx.fillStyle = b.color;
-        ctx.fill();
-        ctx.fillStyle = 'rgba(200, 213, 224, 0.6)';
-        ctx.font = '10px monospace';
-        ctx.fillText(b.name, pos.x + b.radius + 4, pos.y + 4);
+            var b = bodies[i];
+            if (!b.alive) continue;
+            var pos = toScreen(b.x, b.y);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, b.radius, 0, Math.PI * 2);
+            ctx.fillStyle = b.color;
+            ctx.fill();
+            if (showLabels) {
+                ctx.fillStyle = 'rgba(200, 213, 224, 0.6)';
+                ctx.font = '10px monospace';
+                ctx.fillText(b.name, pos.x + b.radius + 4, pos.y + 4);
+            }
         }
     }
 
     function animate() {
         requestAnimationFrame(animate);
         rk4(bodies, FIXED_DT);
+        mergeCollisions(bodies);
+        if (showTrails) {
+            for (var i = 0; i < bodies.length; i++) {
+                if (bodies[i].alive) {
+                    bodies[i].recordTrail();
+                }
+            }
+        }
+        for (var i = 0; i < bodies.length; i++) {
+            if (bodies[i].alive) {
+                for (var j = 0; j < bodies[i].history.length; j++) {
+                    bodies[i].history[j].age++;
+                }
+            }
+        }
         simTime += FIXED_DT;
         draw();
     }
