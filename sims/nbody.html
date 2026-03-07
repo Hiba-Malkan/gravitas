@@ -6,162 +6,495 @@
     <title>N-Body Simulator</title>
     <link rel="stylesheet" href="../css/main.css">
     <style>
-        body {
-        margin: 0;
-        background: #000;
-        font-family: monospace;
+        .sim-layout{
+            display:grid;
+            grid-template-columns:1fr 270px;
+            gap:16px;
+            align-items:start;
         }
 
-        canvas {
-        display: block;
-        cursor: crosshair;
+        @media (max-width:820px){
+            .sim-layout{
+                grid-template-columns:1fr;
+            }
+            .sidebar{
+                order:-1;
+            }
         }
 
-        #controls {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            color: #39ff85;
+        .sidebar{
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+        }
+
+        .control-group{
+            padding:14px 16px;
+            padding-bottom:10px;
+        }
+
+        .control-row{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom:10px;
+        }
+
+        .control-row:last-child{
+            margin-bottom:0;
+        }
+
+        .control-row label{
+            font-size:11px;
+            margin-bottom:0;
+            color:var(--dim);
+        }
+
+        .toggle{
+            position:relative;
+            width:32px;
+            height:18px;
+            flex-shrink:0;
+            display:inline-block;
+        }
+
+        .toggle input{
+            opacity:0;
+            width:0;
+            height:0;
+            position:absolute;
+        }
+
+        .toggle-slider{
+            position:absolute;
+            inset:0;
+            background:var(--border2);
+            border-radius:9px;
+            cursor:pointer;
+            transition:background 0.2s;
+        }
+
+        .toggle-slider::before{
+            content:'';
+            position:absolute;
+            width:12px;
+            height:12px;
+            top:3px;
+            left:3px;
+            background:var(--dim);
+            border-radius:50%;
+            transition:transform 0.2s,background 0.2s;
+        }
+
+        .toggle input:checked+.toggle-slider::before{
+            transform:translateX(14px);
+        }
+
+        .toggle input:checked+.toggle-slider{
+            background:var(--green);
+        }
+
+        .speed-val {
             font-size: 11px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 12px;
-            border: 1px solid rgba(57,255,133,0.2);
+            color: var(--amber);
+            min-width: 40px;
+            text-align: right;
         }
 
-        #controls label {
-            display: flex;
-            align-items: center;
+        .body-list{
+            max-height:160px;
+            overflow-y:auto;
+            scrollbar-width:thin;
+            scrollbar-color:var(--border2) transparent;
+        }
+
+        .body-row{
+            display:flex;
+            align-items:center;
+            gap:8px;
+            padding:5px 0px;
+            font-size:11px;
+            border-bottom:1px solid var(--border2);
+            line-height:1.4;
+        }
+
+        .body-row:last-child{
+            border-bottom:none;
+        }
+
+        .body-dot{
+            width:8px;
+            height:8px;
+            min-width:8px;
+            border-radius:50%;
+        }
+
+        .body-name{
+            flex:1;
+            color:var(--text);
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+        }
+
+        .body-mass{
+            color:var(--dim);
+            font-size:10px;
+            flex-shrink:0;
+        }
+
+        .stats-list{
+            padding:14px 16px
+        }
+
+        .energy-bar{
+            height:2px;
+            background:var(--border);
+            border-radius:1px;
+            margin-top:8px;
+            overflow:hidden;
+        }
+
+        .energy-fill{
+            height:100%;
+            background:var(--green);
+            border-radius: 1px;
+            transition:width 0.3s;
+        }
+
+        #timeDisplay{
+            font-size: 11px;
+            color:var(--amber);
+            margin-left:11px
+        }
+
+        .preset-grid{
+            display:grid;
+            grid-template-columns:1fr 1fr;
             gap: 6px;
-            margin-bottom: 6px;
-            cursor: pointer;
+            padding:14px 16px;
         }
 
-        #controls select, #controls input[type='range']{
-            background: #111;
-            border: 1px solid #333;
-            color: #ccc;
-            font-family: monospace;
-            font-size: 10px;
+        .preset-btn {
+            padding:7px 8px;
+            background:var(--bg);
+            text-align:center;
+            color:var(--text);
+            font-size:10px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-family: 'IBM Plex Mono',monospace;
+            transition: all 0.15s;
+            letter-spacing: 0.03em;
+            cursor: pointer;
+            line-height:1;
         }
+
+        .preset-btn:hover {
+            color:var(--green);
+            border-color:var(--green);
+        }
+
+        .preset-btn:active {
+            background:var(--green);
+            color:var(--bg);
+            background:rgba(57,255,133,0.05);
+        }
+
+        .hint{
+            font-size:10px;
+            color:var(--dimmer);
+            padding:4px 16px 14px;
+            line-height:1.6;
+        }
+
+        .canvas-overlay{
+            position:absolute;
+            inset:auto auto auto 0;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            font-size:11px;
+            white-space:pre;
+            pointer-events:none;
+        }
+
+        .canvas-wrap{
+            position:relative;
+            overflow:hidden;
+        }
+
+        #simCanvas{
+            display:block;
+        }
+
+        canvas{
+        display:block;
+        width:100%;
+        cursor:crosshair;
+        }
+
+        .sim-controls{
+            display:flex;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:8px;
+            padding:10px 16px;
+            border-top:1px solid var(--border);
+        }
+
     </style>
 </head>
 
 <body>
-    <canvas id="simCanvas"></canvas>
 
-    <div id="controls">
-        <label>
-            <input type="checkbox" id="toggleTrails" checked>
-            Trails
-        </label>
-        <label>
-            <input type="checkbox" id="toggleLabels" checked>
-            Labels
-        </label>
-        <label>
-            <input type="checkbox" id="toggleNotify" checked>
-            Notification
-        </label>
-        </label>
-            <div style="margin-bottom: 5px;">
-                Vel Mode: 
-                <select id="addVelMode">
-                    <option value="circular">Circular orbit</option>
-                    <option value="zero">Zero velocity</option>
-                    <option value="random">Random</option>
-                </select>
-            </div>
-            <div style="margin-bottom: 5px;">
-                Mass:
-                <select id="addMass">
-                    <option value="3e-6">Earth (3e-6)</option>
-                    <option value="1e-7">Small (1e-7)</option>
-                    <option value="1e-4">Jupiter (1e-4)</option>
-                    <option value="0.5">Star (0.5)</option>
-                </select>
-            </div>
+    <nav>
+        <span class ="nav-logo">Gravitas</span>
+        <a href="./index.html">Home</a>
+        <a href="nbody.html" class="active">N-Body</a>
+        <a href="nbody.html">Hohmann</a>
+        <a href="lagrange.html">Lagrange</a>
+        <span class="nav-spacer"></span>
+        <span class="nav-status">SIM ACTIVE</span>
+    </nav>
+
+    <div class="page">
+        <div class="page-title"> 
+            // simulation
+        </div>
+        <h1>N-Body Gravity</h1>
+        <p class="lead">
+            lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem
+        </p>
+
+        <div class = "sim-layout">
             <div>
-                Eccen:
-                <input type="number" id="eccSlider" min="0" max="0.9" step="0.05" value="0" style="width: 80px";>
-                <span id="eccVal">0</span>
+                <div class="panel">
+                    <div class="panel-header">
+                        <span>GRAVITATIONAL FIELD</span>
+                        <span class="tag" id="bodyCount">0 BODIES</span>
+                    </div>
+                    <div class="canvas-wrap">
+                        <canvas id="simCanvas"></canvas>
+                        <div class="canvas-overlay" id="overlay"></div>
+                    </div>
+                    <div class="sim-controls">
+                        <button class="btn btn-primary" id="btnPlayPause">⏸ Pause</button>
+                        <button class="btn btn-ghost" id="btnReset">⟳ Reset</button>
+                        <button class="btn btn-ghost" id="btnStep">Step →</button>
+                        <input type="range" id="stepSlider" min="-3" max="-1" step="0.1" value="-2" style="width:80px;margin:0 8px">
+                        <span style="font-size:10px;color:var(--dim)" id="stepVal">0.010 yr</span>
+                        <span id="timeDisplay">t = 0.000 yr</span>
+                    </div>
+                </div>
             </div>
+
+        <div class="sidebar">
+            <div class="panel">
+                <div class="panel-header">
+                    <span>SCENARIOS</span>
+                </div>
+                <div class="preset-grid">
+                    <button class="preset-btn active" data-preset="solar-system">Solar System</button>
+                    <button class="preset-btn" data-preset="binary-star">Binary Star</button>
+                </div>
+            </div>
+
+            <div class ="panel">
+                <div class="panel-header">
+                    <span>CONTROLS</span>
+                </div>
+                <div class="control-group">
+                    <div class ="control-row">
+                        <label>Timescale</label>
+                        <span class="speed-val" id="speedVal">1.0x</span>
+                    </div>
+                    <input type="range" id="speedSlider" min="-2" max="2" step="0.1" value="0" style="width:100%;margin-bottom:14px">
+
+                    <div class="control-row">
+                        <label>Show Trails</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togTrails" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Show Labels</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togLabels" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Velocity Vectors</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togVectors">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Grid (AU)</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togGrid">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Track COM</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togCOM">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Notifications</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togNotify" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Add Body Mass</label>
+                        <select id="addMass" style="font-size:10px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:'IBM Plex Mono',monospace">
+                            <option value="3e-6">Earth (3e-6)</option>
+                            <option value="1e-7">Small (1e-7)</option>
+                            <option value="1e-4">Jupiter (1e-4)</option>
+                            <option value="0.5">Star (0.5)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Add Velocity Mode</label>
+                        <select id="addVelMode" style="font-size:10px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:'IBM Plex Mono',monospace">
+                            <option value="circular">Circular orbit</option>
+                            <option value="zero">Zero velocity</option>
+                            <option value="random">Random</option>
+                        </select>
+                    </div>
+
+                    <div class="control-row">
+                        <label style="flex-shrink:0">Orbit Eccen.</label>
+                        <input type="number" id="eccSlider" min="0" max="0.9" step="0.05" value="0" style="flex:1;font-size:10px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px">
+                        <span style="font-size:10px;color:var(--dim);min-width:28px;text-align:right" id="eccVal">0.0</span>
+                    </div>
+                </div>
+                <div class ="hint">
+                    Click canvas to add a body. Adjust mass, velocity mode, and eccentricity above.
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span>BODIES</span>
+                </div>
+                <div class="control-group" style="padding-top:8px">
+                    <div class="body-list" id="bodyList"></div>
+                </div>
+            </div>
+
+            <div class ="panel">
+                <div class="panel-header" style="padding:0 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px">
+                    <span>ENERGY</span>
+                    <span class="badge badge-green">CONSERVED</span>
+                </div>
+                <div class="stats-list">
+                    <div class="readout"> 
+                        <span>Kinetic</span>
+                        <span class="val green" id="eKE">—</span>
+                    </div>
+                    <div class="readout"> 
+                        <span>Potential</span>
+                        <span class="val" id="ePE">—</span>
+                    </div>
+                    <div class="readout"> 
+                        <span>Total</span>
+                        <span class="val blue" id="eTotal">—</span>
+                    </div>
+                    <div class="readout"> 
+                        <span>Ang. Mom.</span>
+                        <span class="val" id="eL">—</span>
+                    </div>
+                    <div class="energy-bar">
+                        <div class="energy-fill" id="energyFill" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div id="notification" style="position:fixed;top:80px;right:20px;padding:12px 16px;background:rgba(57,255,133,0.15);border:1px solid var(--green);border-radius:4px;color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:0;pointer-events:none;transition:opacity 0.3s;z-index:1000"></div>
 
     <script>
-    var canvas = document.getElementById("simCanvas");
-    var ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    var W = canvas.width;
-    var H = canvas.height;
-    var G = 4 * Math.PI * Math.PI;
-
-    var camScale = 35;
-    var camX = W / 2;
-    var camY = H / 2;
-
-    var softening = 0.001;
-    var softeningSquared = softening * softening;
-
-    var showTrails = true;
-    var showLabels = true;
-
-    function toScreen(wx, wy) {
-        return {
-            x: camX + wx * camScale,
-            y: camY - wy * camScale
-        };
-    }
-
-    function fromScreen(sx, sy) {
-        return {
-            x: (sx - camX) / camScale,
-            y: -(sy - camY) / camScale
-        };
-    }
-
-    function showNotification(msg) {
+    // notification
+    function showNotification(msg, duration) {
+        if (duration == undefined) duration = 3000;
         var el = document.getElementById('notification');
         el.textContent = msg;
         el.style.opacity = 1;
         setTimeout(function() {
             el.style.opacity = 0;
-        }, 3000);
+        }, duration);
     }
 
+    // gravitational constant in AU^3/yr^2/M_sun
+    var G = 4 * Math.PI * Math.PI;
+
+    // softening parameter to avoid singularities
+    var softening = 0.001;
+    var softeningSquared = softening * softening;
+
+    // generate random background stars
     var STARS = [];
     for (var i = 0; i < 200; i++) {
         STARS.push({
             x: Math.random(),
             y: Math.random(),
-            r: Math.random() * 1.2 + 0.2,
-            a: Math.random() * Math.PI * 2,
-            spd: Math.random() * 0.003 + 0.001
+            r: Math.random() * 1.2 + 0.2, // radius
+            a: Math.random() * Math.PI * 2, // phase for twinkling
+            spd: Math.random() * 0.003 + 0.001 // twinkle speed
         });
     }
 
+    // body maker
     function Body(opts) {
         this.name = opts.name;
-        this.mass = opts.mass;
-        this.x = opts.x;
+        this.mass = opts.mass; 
+        this.x = opts.x; 
         this.y = opts.y;
         this.vx = opts.vx;
         this.vy = opts.vy;
         this.color = opts.color;
         this.radius = opts.radius;
-        this.fixed  = opts.fixed || false;
+        this.fixed = opts.fixed || false;
         this.alive = true;
-        this.history = [];
+        this.history = []; // for trail rendering
         this.maxTrail = 500;
     }
 
     Body.prototype.recordTrail = function() {
-        this.history.push({x: this.x, y: this.y, age: 0});
+        var point = {x: this.x, y: this.y, age: 0};
+        this.history.push(point);
         if (this.history.length > this.maxTrail) {
             this.history.splice(0, 1);
         }
-    }
+    };
 
+    Body.prototype.kineticEnergy = function() {
+        var speedSq = this.vx * this.vx + this.vy * this.vy;
+        return 0.5 * this.mass * speedSq;
+    };
+
+    var simTime = 0;
+    var FIXED_DT = 0.002;
+
+    // initial solar system setup
     var bodies = [
         new Body({
              name: "Sun",     
@@ -186,7 +519,7 @@
         }),
         new Body({
             name: 'Venus',
-            mass: 2.45e-6,
+            mass:2.45e-6,
             x: 0.723,
             y: 0,
             vx: 0,
@@ -224,6 +557,7 @@
             color: '#c88b3a',
             radius: 10
         }),
+
         new Body({
             name: 'Saturn',
             mass: 2.85e-4,
@@ -256,41 +590,43 @@
         }),
     ];
 
-    var simTime = 0;
-    var FIXED_DT = 0.002;
-
+    // compute accelerations using newton's law
     function accel(bodies) {
         var n = bodies.length;
         var ax = new Float64Array(n);
         var ay = new Float64Array(n);
-        for (var i = 0; i < n; i++) {
-            if (!bodies[i].alive || bodies[i].fixed) continue;
-            for (var j = 0; j < n; j++) {
-                if (i === j || !bodies[j].alive) continue;
+        for(var i=0; i<n; i++) {
+            if(!bodies[i].alive || bodies[i].fixed) continue;
+            for(var j=0; j<n; j++) {
+                if(i===j || !bodies[j].alive) continue;
                 var dx = bodies[j].x - bodies[i].x;
                 var dy = bodies[j].y - bodies[i].y;
-                var distSq = dx*dx + dy*dy + softeningSquared;
-                var dist   = Math.sqrt(distSq);
-                var f      = G * bodies[j].mass / (distSq * dist);
-                ax[i] += f * dx;
-                ay[i] += f * dy;
+                var distSq = dx*dx + dy*dy + softeningSquared; // softened distance
+                var dist = Math.sqrt(distSq);
+                var f = G * bodies[j].mass / (distSq * dist); // gravitational acceleration
+                ax[i] += f*dx;
+                ay[i] += f*dy;
             }
         }
-        return {ax: ax, ay : ay};
+        return {ax:ax, ay:ay};
 
     }
 
+    // runge-kutta 4th (RK4) integrator
     function rk4(bodies, dt) {
         var n = bodies.length;
         var i;
-        var x0 = [], y0 = [], vx0 = [], vy0 = [];
-        for (i = 0; i < n; i++) {
+
+        // store initial state
+        var x0=[], y0=[], vx0=[], vy0=[];
+        for(i=0; i<n; i++) {
             x0.push(bodies[i].x);
             y0.push(bodies[i].y);
             vx0.push(bodies[i].vx);
             vy0.push(bodies[i].vy);
         }
 
+        // calculate derivatives at given state
         function gd(xs, ys, vxs, vys) {
             var sx = [], sy = [];
             for (var ii = 0; ii < n; ii++) {
@@ -300,6 +636,8 @@
                 bodies[ii].y = ys[ii];
             }
             var res = accel(bodies);
+
+            // restore original positions
             for (var ii = 0; ii < n; ii++) {
                 bodies[ii].x = sx[ii];
                 bodies[ii].y = sy[ii];
@@ -317,77 +655,549 @@
             };
         }
 
+        // k1: initial slope
         var k1 = gd(x0, y0, vx0, vy0);
-        var x1 = [], y1 = [], vx1 = [], vy1 = [];
-        for (i = 0; i < n; i++) {
-            x1.push(x0[i]+.5*dt*k1.dxs[i]);
-            y1.push(y0[i]+.5*dt*k1.dys[i]);
-            vx1.push(vx0[i]+.5*dt*k1.dvxs[i]);
-            vy1.push(vy0[i]+.5*dt*k1.dvys[i]);
+        var x1=[], y1=[], vx1=[], vy1=[];
+        for(i=0; i<n; i++){
+            x1.push(x0[i] + .5*dt*k1.dxs[i]);
+            y1.push(y0[i] + .5*dt*k1.dys[i]);
+            vx1.push(vx0[i] + .5*dt*k1.dvxs[i]);
+            vy1.push(vy0[i] + .5*dt*k1.dvys[i]);
         }
+        // k2: midpoint slope
         var k2 = gd(x1, y1, vx1, vy1);
-        var x2 = [], y2 = [], vx2 = [], vy2 = [];
-        for (i = 0; i < n; i++) {
-            x2.push(x0[i]+.5*dt*k2.dxs[i]);
-            y2.push(y0[i]+.5*dt*k2.dys[i]);
-            vx2.push(vx0[i]+.5*dt*k2.dvxs[i]);
-            vy2.push(vy0[i]+.5*dt*k2.dvys[i]);
+        var x2=[], y2=[], vx2=[], vy2=[];
+        for(i=0; i<n; i++){
+            x2.push(x0[i] + .5*dt*k2.dxs[i]);
+            y2.push(y0[i] + .5*dt*k2.dys[i]);
+            vx2.push(vx0[i] + .5*dt*k2.dvxs[i]);
+            vy2.push(vy0[i] + .5*dt*k2.dvys[i]);
         }
+        // k3: second midpoint slope
         var k3 = gd(x2, y2, vx2, vy2);
-        var x3 = [], y3 = [], vx3 = [], vy3 = [];
-        for (i = 0; i < n; i++) {
-            x3.push(x0[i]+dt*k3.dxs[i]);
-            y3.push(y0[i]+dt*k3.dys[i]);
-            vx3.push(vx0[i]+dt*k3.dvxs[i]);
-            vy3.push(vy0[i]+dt*k3.dvys[i]);
+        var x3=[], y3=[], vx3=[], vy3=[];
+        for(i=0; i<n; i++){
+            x3.push(x0[i] + dt*k3.dxs[i]);
+            y3.push(y0[i] + dt*k3.dys[i]);
+            vx3.push(vx0[i] + dt*k3.dvxs[i]);
+            vy3.push(vy0[i] + dt*k3.dvys[i]);
         }  
+        // k4: endpoint slope
         var k4 = gd(x3, y3, vx3, vy3);
-        for (i = 0; i < n; i++) {
-            if (!bodies[i].alive || bodies[i].fixed) continue;
-            bodies[i].x  = x0[i]  + (dt/6)*(k1.dxs[i]  + 2*k2.dxs[i]  + 2*k3.dxs[i]  + k4.dxs[i]);
-            bodies[i].y  = y0[i]  + (dt/6)*(k1.dys[i]  + 2*k2.dys[i]  + 2*k3.dys[i]  + k4.dys[i]);
+
+        // weighted average to get final position
+        for(i=0; i<n; i++){
+            if(!bodies[i].alive || bodies[i].fixed)continue;
+            bodies[i].x = x0[i] + (dt/6)*(k1.dxs[i] + 2*k2.dxs[i] + 2*k3.dxs[i] + k4.dxs[i]);
+            bodies[i].y = y0[i] + (dt/6)*(k1.dys[i] + 2*k2.dys[i] + 2*k3.dys[i] + k4.dys[i]);
             bodies[i].vx = vx0[i] + (dt/6)*(k1.dvxs[i] + 2*k2.dvxs[i] + 2*k3.dvxs[i] + k4.dvxs[i]);
             bodies[i].vy = vy0[i] + (dt/6)*(k1.dvys[i] + 2*k2.dvys[i] + 2*k3.dvys[i] + k4.dvys[i]);
         }
     }
 
-    function mergeCollisions(bodies) {
+    // handle collisions between bodies
+    function mergeCollisions(bodies){
         var i, j;
-        for (i = 0; i < bodies.length; i++) {
-            if (!bodies[i].alive) continue;
-            for (j = i + 1; j < bodies.length; j++) {
-                if (!bodies[j].alive) continue;
+
+        // check all pairs
+        for(i=0; i<bodies.length; i++){
+            if(!bodies[i].alive)continue;
+            for(j=i+1; j<bodies.length; j++){
+                if(!bodies[j].alive)continue;
                 var dx = bodies[j].x - bodies[i].x;
                 var dy = bodies[j].y - bodies[i].y;
                 var dist = Math.sqrt(dx*dx + dy*dy);
-                var minDist = Math.max((bodies[i].radius + bodies[j].radius) * 0.0005, 0.01);
+                var minDist = Math.max((bodies[i].radius + bodies[j].radius) * 0.0005, 0.01); // collision threshold
                 if (dist < minDist) {
+
+                    // on collision, merge bodies
                     var big = bodies[i].mass > bodies[j].mass ? bodies[i] : bodies[j];
                     var small = big === bodies[i] ? bodies[j] : bodies[i];
                     if (!big.fixed) {
+
+                        // conserve momentum
                         big.vx = (big.vx * big.mass + small.vx * small.mass) / (big.mass + small.mass);
                         big.vy = (big.vy * big.mass + small.vy * small.mass) / (big.mass + small.mass);
                         big.mass = big.mass + small.mass;
                         var nr = big.radius + small.radius * 0.4;
-                        big.radius = nr > 24? 24 : nr;
+                        big.radius = nr > 24 ? 24 : nr;
 
                     }
                     small.alive = false;
                 }
             }
         }
+
+        // check for bodies leaving the system
         for (i = 0; i < bodies.length; i++) {
             if (!bodies[i].alive || bodies[i].fixed) continue;
             var d = Math.sqrt(bodies[i].x * bodies[i].x + bodies[i].y * bodies[i].y);
             if (d > 50) {
                 bodies[i].alive = false;
-                if (document.getElementById('toggleNotify').checked) {
-                    showNotification(bodies[i].name + ' ejected from system');
+                if (document.getElementById('togNotify').checked) {
+                    showNotification(bodies[i].name + ' escaped beyond 50 AU');
                 }
             }
         }
     }
 
+    function simStep(bodies, dt, subSteps) {
+        if (!subSteps) subSteps = 4;
+
+        var aliveBodies = [];
+        var i;
+        for (i = 0; i < bodies.length; i++) {
+            if (bodies[i].alive) aliveBodies.push(bodies[i]);
+        }
+
+        // find closest approach to adjust substeps
+        var minSep = 999999;
+        for (i = 0; i < aliveBodies.length; i++) {
+            for (var j = i + 1; j < aliveBodies.length; j++) {
+                var ddx = aliveBodies[i].x - aliveBodies[j].x;
+                var ddy = aliveBodies[i].y - aliveBodies[j].y;
+                var s = Math.sqrt(ddx * ddx + ddy * ddy);
+                if (s < minSep) minSep = s;
+            }
+        }
+        
+        // adaptive timestep for close encounters
+        if (minSep < 0.5 && minSep > 0.01) {
+            var needed = Math.ceil(8 / minSep);
+            if (needed > subSteps) {
+                subSteps = needed;
+            }
+        }
+        if (subSteps > 16) subSteps = 16;
+
+        var smallDt = dt / subSteps;
+        for (var k = 0; k < subSteps; k++) {
+            rk4(bodies, smallDt);
+            mergeCollisions(bodies);
+
+            // trail points
+            if (showTrails) {
+                for (i = 0; i < bodies.length; i++) {
+                    if (bodies[i].alive) bodies[i].recordTrail();
+                }
+            }
+        }
+
+        for (i = 0; i < bodies.length; i++) {
+            if (!bodies[i].alive) continue;
+            for (var p = 0; p < bodies[i].history.length; p++) {
+                bodies[i].history[p].age++;
+            }
+
+        }
+    }
+
+    // calculate total system energy
+    function totalEnergy(bodies) {
+        var KE = 0; //kinetic energy
+        var PE = 0; //potential energy
+        var i, j;
+
+        // sum of kinetic energies
+        for (i = 0; i < bodies.length; i++) {
+            KE += bodies[i].kineticEnergy();
+        }
+
+        // sum of GPE for all pairs
+        for (i = 0; i < bodies.length; i++) {
+            for (j = i + 1; j < bodies.length; j++) {
+                var dx = bodies[i].x - bodies[j].x;
+                var dy = bodies[i].y - bodies[j].y;
+                var r = Math.sqrt(dx * dx + dy * dy + softeningSquared);
+                PE -= G * bodies[i].mass * bodies[j].mass / r;
+            }
+        }
+
+        return { KE: KE, PE: PE, total: KE +  PE };
+    }
+
+    // calculate total angular momentum
+    function totalL(bodies) {
+        var L = 0;
+        for (var i = 0; i < bodies.length; i++) {
+            if (!bodies[i].alive) continue;
+            L += bodies[i].mass * ( bodies[i].x * bodies[i].vy - bodies[i].y * bodies[i].vx); // L = m * r x v
+        }
+        return L;
+    }
+
+    // solar system preset
+    var PRESETS = {
+        'solar-system': function() {
+            var list = [];
+
+            list.push(new Body({
+                name: "Sun",     
+                mass: 1,
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                color: "#FDB813",
+                radius: 14,
+                fixed: true
+            }));
+
+            list.push(new Body({
+                name: 'Mercury',
+                mass: 1.65e-7,
+                x: 0.387,
+                y: 0,
+                vx: 0,
+                vy: 10.06,
+                color: '#b5b5b5',
+                radius: 4
+            }));
+
+            list.push(new Body({
+                name: 'Venus',
+                mass: 2.45e-6,
+                x: 0.723,
+                y: 0,
+                vx: 0,
+                vy: 7.38,
+                color: '#e8c07a',
+                radius: 5
+            }));
+
+            list.push(new Body({
+                name: 'Earth',
+                mass: 3e-6,
+                x: 1,
+                y: 0,
+                vx: 0,
+                vy: 6.283,
+                color: '#4fc3f7',
+                radius: 5
+            }));
+
+            list.push(new Body({
+                name: 'Mars',
+                mass: 3.2e-7,
+                x: 1.524,
+                y: 0,
+                vx: 0,
+                vy: 5.09,
+                color: '#c1440e',
+                radius: 4
+            }));
+
+            list.push(new Body({
+                name: 'Jupiter',
+                mass: 9.5e-4,
+                x: 5.2,
+                y: 0,
+                vx: 0,
+                vy: 2.755,
+                color: '#c88b3a',
+                radius: 10
+            }));
+
+            list.push(new Body({
+                name: 'Saturn',
+                mass: 2.85e-4,
+                x: 9.54,
+                y: 0,
+                vx: 0,
+                vy: 2.03,
+                color: '#e6c58f',
+                radius: 9
+            }));
+
+            list.push(new Body({
+                name: 'Uranus',
+                mass: 4.36e-5,
+                x: 19.19,
+                y: 0,
+                vx: 0,
+                vy: 1.43,
+                color: '#4fd0e7',
+                radius: 7
+            }));
+
+            list.push(new Body({
+                name: 'Neptune',
+                mass: 5.15e-5,
+                x: 30.07,
+                y: 0,
+                vx: 0,
+                vy: 1.14,
+                color: '#4c6ef5',
+                radius: 7
+            }));
+            return list;
+        },
+
+        // binary star system preset + planet
+        'binary-star': function() {
+            
+            var m1 = 1.2; 
+            var m2 = 0.8;
+            var sep = 2.0; 
+            var mtot = m1 + m2;
+
+            // position stars around center of mass
+            var r1 = sep * (m2 / mtot);
+            var r2 = sep * (m1 / mtot);
+            var vrel = Math.sqrt(G * mtot / sep); //orbital velocity for circular orbit
+            var v1 = vrel * (m2 / mtot);
+            var v2 = vrel * (m1 / mtot);
+
+            var planetOrbitR = 5.0;
+            var planetSpeed = Math.sqrt(G * mtot / planetOrbitR);
+
+            var list = [];
+            list.push(new Body({
+                name: 'Star A',
+                mass: m1,
+                x: -r1,
+                y: 0,
+                vx: 0,
+                vy: -v1,
+                color: '#FFD97D',
+                radius: 12
+            }));
+            list.push(new Body({
+                name: 'Star B',
+                mass: m2,
+                x: r2,
+                y: 0,
+                vx: 0,
+                vy: v2,
+                color: '#FF6B6B',
+                radius: 9
+            }));
+
+            list.push(new Body({
+                name: 'Planet', // extra planet!!
+                mass: 3e-6,
+                x: planetOrbitR,
+                y: 0,
+                vx: 0,
+                vy: planetSpeed,
+                color:'#4fc3f7',
+                radius: 5
+            }));
+            return list;
+        }
+
+    };
+
+    // canvas
+    var canvas = document.getElementById('simCanvas');
+    var ctx = canvas.getContext('2d');
+
+    // camera position and zoom
+    var camX = 0;
+    var camY = 0;
+    var camScale = 80; 
+
+    function resizeCanvas() {
+        var dpr = window.devicePixelRatio || 1; 
+        var w = canvas.parentElement.offsetWidth;
+        var h = Math.round(w * 0.6); 
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        canvas._w = w;
+        canvas._h = h;
+    }
+
+    function getW() {
+        if (canvas._w) return canvas._w;
+        return canvas.parentElement.offsetWidth;
+    }
+
+    function getH() {
+        if (canvas._h) return canvas._h;
+        return Math.round(getW() * 0.6);
+    }
+
+    // convert world co-ords to screen coords
+    function toScreen(wx, wy) {
+        var sx = wx * camScale + camX;
+        var sy = -wy * camScale + camY; //flip y-axis
+        return {x: sx, y: sy};
+    }
+
+    function fromScreen(sx, sy) {
+        var wx = (sx - camX) / camScale;
+        var wy = -(sy - camY) / camScale;
+        return {x: wx, y: wy};
+    }
+
+    // background stars
+    var STARS = [];
+    for (var i = 0; i < 220; i++) {
+        STARS.push({
+            x: Math.random(),
+            y: Math.random(),
+            r: Math.random() * 1.2 + 0.2,
+            a: Math.random() * Math.PI * 2,
+            spd: Math.random() * 0.003 + 0.001
+        });
+    }
+
+    // render
+    function drawScene(bodies) {
+        var W = getW();
+        var H = getH();
+        var dpr = window.devicePixelRatio || 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // clear with black background
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, W, H);
+
+        // draw background stars
+        var i = 0;
+        for (i = 0; i < STARS.length; i++) {
+            var star = STARS[i];
+            star.a += star.spd;
+            var alpha = 0.3 + 0.5 * Math.abs(Math.sin(star.a));
+            ctx.beginPath();
+            ctx.arc(star.x * W, star.y * H, star.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(200,212, 240,' + alpha + ')';
+            ctx.fill();
+        }
+
+        // grid lines
+        if (showGrid) {
+            ctx.strokeStyle = 'rgba(30, 35,48, 0.8)';
+            ctx.lineWidth = 1;
+            var startX = Math.floor(-camX / camScale);
+            var endX = Math.ceil((W - camX) / camScale);
+            for (var gx = startX; gx <= endX; gx++) {
+                var screenX = gx * camScale + camX;
+                ctx.beginPath();
+                ctx.moveTo(screenX, 0);
+                ctx.lineTo(screenX, H);
+                ctx.stroke();
+            }
+            var startY = Math.floor(-camY / camScale);
+            var endY = Math.ceil((H - camY) / camScale);
+            for (var gy = startY; gy <= endY; gy++) {
+                var screenY = gy * camScale + camY;
+                ctx.beginPath();
+                ctx.moveTo(0, screenY);
+                ctx.lineTo(W, screenY);
+                ctx.stroke();
+            }
+        }
+
+        // trails
+        if (showTrails) {
+        for (i = 0; i < bodies.length; i++) {
+            var b = bodies[i];
+            if (!b.alive) continue;
+            if (b.history.length < 2) continue;
+            for (var j = 1; j < b.history.length; j++) {
+                var p0 = b.history[j - 1];
+                var p1 = b.history[j];
+                var maxAge = Math.max(p0.age, p1.age, 1);
+                if (maxAge > 600) continue; // fade out old trails
+                var trailAlpha = 0.5 * (1 - maxAge / 600);
+                if (trailAlpha <= 0.02) continue;
+
+                var s0 = toScreen(p0.x, p0.y);
+                var s1 = toScreen(p1.x, p1.y);
+                var alphaInt = Math.round(trailAlpha * 255);
+                var alphaHex = alphaInt.toString(16);
+                if (alphaHex.length === 1) alphaHex = '0' + alphaHex;
+                ctx.beginPath();
+                ctx.moveTo(s0.x, s0.y);
+                ctx.lineTo(s1.x, s1.y);
+                ctx.strokeStyle = b.color + alphaHex;
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+            }
+        }
+    }
+
+    // velocity vectors
+    if (showVectors) {
+        for (i = 0; i < bodies.length; i++) {
+            var b = bodies[i];
+            if (!b.alive) continue;
+            var fromPt = toScreen(b.x, b.y);
+            var toPt = {x: fromPt.x + b.vx * camScale * 0.025, y: fromPt.y - b.vy * camScale * 0.025}
+            ctx.strokeStyle = '#ffb83f88';
+            ctx.lineWidth = 1.5;
+
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(fromPt.x, fromPt.y);
+            ctx.lineTo(toPt.x, toPt.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // arrow head
+            var arrowAngle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
+            ctx.fillStyle = '#ffb83f';
+            ctx.beginPath();
+            ctx.moveTo(toPt.x, toPt.y);
+            ctx.lineTo(toPt.x - 6 * Math.cos(arrowAngle - 0.4), toPt.y - 6 * Math.sin(arrowAngle - 0.4));
+            ctx.lineTo(toPt.x - 6 * Math.cos(arrowAngle + 0.4), toPt.y - 6 * Math.sin(arrowAngle + 0.4));
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+
+    //draw bodies
+    for (i = 0; i < bodies.length; i++) {
+        var b = bodies[i];
+        if (!b.alive) continue;
+        var pos = toScreen(b.x, b.y);
+        var r = b.radius;
+        if (r < 3) r = 3;
+        
+        // glow effect
+        var glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r * 3);
+        glow.addColorStop(0, b.color + '55');
+        glow.addColorStop(1, 'transparent');
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = b.color;
+        ctx.fill();
+
+        if (showLabels) {
+            ctx.font = '10px IBM Plex Mono, monospace';
+            ctx.fillStyle = 'rgba(205, 213, 224, 0.7)';
+            ctx.textAlign = 'left';
+            ctx.fillText(b.name, pos.x + r + 4, pos.y + 4);
+        }
+    }
+
+}
+
+    var simTime = 0; 
+    var running = true;
+    var lastFrame = null;
+    var speedMult = 1; 
+    var currentPreset = 'solar-system';
+    var showTrails = true;
+    var showLabels = true;
+    var showVectors = false;
+    var showGrid = false;
+    var trackCOM = false; //track center of mass
+    var stepSize = 0.01; //default step size
+    var FIXED_DT = 0.002; //fixed timestep
+    var MAX_DT = 0.008; //max timestep for stability
+    var initialEnergy = null; //for energy drift calc.
+    
+    //mouse pan and zoom 
     var isDragging = false;
     var dragStartX = 0;
     var dragStartY = 0;
@@ -403,32 +1213,45 @@
     window.addEventListener('mouseup', function() {
         isDragging = false;
     });
+
     window.addEventListener('mousemove', function(e) {
         if (!isDragging) return;
-        hasDragged = true;
         var rect = canvas.getBoundingClientRect();
         var ox = e.clientX - rect.left;
         var oy = e.clientY - rect.top;
-        camX += ox - dragStartX;
-        camY += oy - dragStartY;
+        var dx = ox - dragStartX;
+        var dy = oy - dragStartY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            hasDragged = true;
+        }
+
+        camX += dx;
+        camY += dy;
         dragStartX = ox;
         dragStartY = oy;
     });
 
+    // zoom 
     canvas.addEventListener("wheel", function(e) {
         e.preventDefault();
-        var factor = e.deltaY < 0 ? 1.12 : 0.89;
+        var factor = e.deltaY < 0 ? 1.12 : 0.89; 
+
         camX = e.offsetX - (e.offsetX - camX) * factor;
         camY = e.offsetY - (e.offsetY - camY) * factor;
         camScale *= factor;
-    }, { passive: false });
+    }, {passive: false});
 
-    var BODY_COLORS = ['#ff9f43','#ee5a24','#0abde3','#10ac84','#f368e0','#ff6b6b','#a29bfe','#fd79a8'];
+    // colors for new bodies
+    var BODY_COLORS = ['#ff9f43', '#ee5a24', '#0abde3', '#10ac84', '#f368e0', '#ff6b6b', '#a29bfe', '#fd79a8'];
 
+    // add body on click
     canvas.addEventListener('click', function(e) {
-        if (hasDragged) return;
+        if (hasDragged) return; 
+
         var pos = fromScreen(e.offsetX, e.offsetY);
-        var alive = bodies.filter(function(b) { return b.alive; });
+        var alive = bodies.filter(function(b) {return b.alive;});
+
+        // calc. center of mass
         var totalMass = 0;
         var comX = 0;
         var comY = 0;
@@ -441,22 +1264,26 @@
             comX /= totalMass;
             comY /= totalMass;
         }
+
         var vx = 0, vy = 0;
         var velMode = document.getElementById('addVelMode').value;
         var ecc = parseFloat(document.getElementById('eccSlider').value);
         if (velMode === 'circular') {
+
+            // find closest massive body
             var closest = null;
-            var closestDist = Infinity;
+            var closestDist = 999999;
             for (var i = 0; i < alive.length; i++) {
                 if (alive[i].mass < 1e-5) continue;
                 var ddx = pos.x - alive[i].x;
                 var ddy = pos.y - alive[i].y;
-                var d = Math.sqrt(ddx*ddx + ddy*ddy);
+                var d = Math.sqrt(ddx * ddx + ddy * ddy);
                 if (d < closestDist) {
                     closestDist = d;
                     closest = alive[i];
                 }
             }
+
             var orbitMass = totalMass;
             var orbitX = comX;
             var orbitY = comY;
@@ -465,24 +1292,28 @@
                 orbitX = closest.x;
                 orbitY = closest.y;
             }
+
             var relX = pos.x - orbitX;
             var relY = pos.y - orbitY;
-            var orbitR = Math.sqrt(relX*relX + relY*relY);
+            var orbitR = Math.sqrt(relX * relX + relY * relY);
             var circSpeed = orbitR > 0.01 ? Math.sqrt(G * orbitMass / orbitR) : 2;
-            var adjSpeed = circSpeed * Math.sqrt((1 - ecc)/(1+ecc));
+            var adjSpeed = circSpeed * Math.sqrt((1 - ecc) / (1 + ecc)); // adjust for eccentricity
             var angle = Math.atan2(relY, relX) + Math.PI / 2;
             vx = adjSpeed * Math.cos(angle);
             vy = adjSpeed * Math.sin(angle);
-        } else if (velMode === 'random') {
+        } 
+        
+        else if (velMode === 'random') {
             var spd = Math.random() * 4 + 1;
             var ang = Math.random() * Math.PI * 2;
             vx = spd * Math.cos(ang);
             vy = spd * Math.sin(ang);
         }
+
         var m = parseFloat(document.getElementById('addMass').value);
-        var r = m > 0.1? 12: m > 1e-4? 8:5;
+        var r = m > 0.1 ? 12 : m > 1e-4 ? 8 : 5; // size based on mass
         bodies.push(new Body({
-            name: 'Body ' + (alive.length+1),
+            name: 'Body ' + (alive.length + 1),
             mass: m,
             x: pos.x,
             y: pos.y,
@@ -491,9 +1322,11 @@
             color: BODY_COLORS[bodies.length % BODY_COLORS.length],
             radius: r
         }));
+
+        updateBodyList();
     });
 
-    document.getElementById('toggleTrails').addEventListener('change', function(e) {
+    document.getElementById('togTrails').addEventListener('change', function(e) {
         showTrails = e.target.checked;
         if (!showTrails) {
             for (var i = 0; i < bodies.length; i++) {
@@ -501,96 +1334,238 @@
             }
         }
     });
-    document.getElementById('toggleLabels').addEventListener('change', function(e) {
+
+    document.getElementById('togLabels').addEventListener('change', function(e) {
         showLabels = e.target.checked;
     });
+
+    document.getElementById('togVectors').addEventListener('change', function(e) {
+        showVectors = e.target.checked;
+    });
+
+    document.getElementById('togGrid').addEventListener('change', function(e) {
+        showGrid = e.target.checked;
+    });
+
+    document.getElementById('togCOM').addEventListener('change', function(e) {
+        trackCOM = e.target.checked;
+    });
+
     document.getElementById('eccSlider').addEventListener('input', function() {
         document.getElementById('eccVal').textContent = parseFloat(this.value).toFixed(1);
     });
 
-    function draw() {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, W, H);
 
-        for (var i = 0; i < STARS.length; i++) {
-            var s = STARS[i];
-            s.a += s.spd;
-            var alpha = 0.3 + 0.5 * Math.abs(Math.sin(s.a));
-            ctx.beginPath();
-            ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(200, 212, 240, ' + alpha + ')';
-            ctx.fill();
+    function loadPreset(name) {
+        currentPreset = name;
+        bodies = PRESETS[name]();
+        simTime = 0;
+        lastFrame = null;
+        initialEnergy = null;
+
+        resizeCanvas();
+
+        // adjust zoom depending on preset
+        if (name === 'solar-system') {
+            camScale = 35;
+        } 
+        
+        else if (name === 'binary-star') {
+            camScale = 100;
+        } 
+        
+        else {
+            camScale = 80;
         }
 
-        if (showTrails) {
-            for (var i = 0; i < bodies.length; i++) {
-                var b = bodies[i];
-                if (!b.alive || b.history.length<2) continue;
-                for (var j=1; j < b.history.length; j++) {
-                    var p0 = b.history[j-1];
-                    var p1 = b.history[j];
-                    var maxAge = Math.max(p0.age, p1.age, 1);
-                    if (maxAge > 600) continue;
-                    var ta = 0.5 * (1- maxAge / 600);
-                    if (ta <= 0.02) continue;
-                    var s0 = toScreen(p0.x, p0.y);
-                    var s1 = toScreen(p1.x, p1.y);
-                    var aInt = Math.round(ta * 255);
-                    var aHex = aInt.toString(16);
-                    if (aHex.length === 1) aHex = '0' + aHex;
-                    ctx.beginPath();
-                    ctx.moveTo(s0.x, s0.y);
-                    ctx.lineTo(s1.x, s1.y);
-                    ctx.strokeStyle = b.color + aHex;
-                    ctx.lineWidth = 1.2;
-                    ctx.stroke();
-                }
-            }
-        }
+        camX = getW() / 2;
+        camY = getH() / 2;
 
-        ctx.fillStyle = 'rgba(57,255,133,0.4)';
-        ctx.font = '11px monospace';
-        ctx.fillText('t = ' + simTime.toFixed(3) + ' yr', 12, 20);
+        updateBodyList();
 
-        for (var i = 0; i < bodies.length; i++) {
-            var b = bodies[i];
-            if (!b.alive) continue;
-            var pos = toScreen(b.x, b.y);
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, b.radius, 0, Math.PI * 2);
-            ctx.fillStyle = b.color;
-            ctx.fill();
-            if (showLabels) {
-                ctx.fillStyle = 'rgba(200, 213, 224, 0.6)';
-                ctx.font = '10px monospace';
-                ctx.fillText(b.name, pos.x + b.radius + 4, pos.y + 4);
+        // update button states
+        var btns = document.querySelectorAll('.preset-btn');
+        for (var i = 0; i < btns.length; i++) {
+            if (btns[i].dataset.preset === name) {
+                btns[i].classList.add('active');
+            } 
+
+            else 
+            {
+                btns[i].classList.remove('active');
             }
         }
     }
 
-    function animate() {
+    function updateBodyList() {
+        var listEl = document.getElementById('bodyList');
+        var countEl = document.getElementById('bodyCount');
+        var aliveBodies = [];
+        for (var i = 0; i < bodies.length; i++) {
+            if (bodies[i].alive) aliveBodies.push(bodies[i]);
+        }
+
+        var html = '';
+        for (var i = 0; i < aliveBodies.length; i++) {
+            var b = aliveBodies[i];
+            html += '<div class="body-row">';
+            html += '<div class="body-dot" style="background:' + b.color + '"></div>';
+            html += '<span class="body-name">' + b.name + '</span>';
+            html += '<span class="body-mass">' + b.mass.toExponential(1) + ' M\u2609</span>';
+            html += '</div>';
+        }
+        listEl.innerHTML = html;
+        countEl.textContent = aliveBodies.length + ' BODIES';
+    }
+
+    function updateStats() {
+        var aliveBodies = [];
+        for (var i = 0; i < bodies.length; i++) {
+            if (bodies[i].alive) aliveBodies.push(bodies[i]);
+        }
+
+        document.getElementById('timeDisplay').textContent = 't = ' + simTime.toFixed(3) + ' yr';
+
+        var overlayText = 't = ' + simTime.toFixed(3) + ' yr\n';
+        overlayText += 'scroll to zoom · drag to pan\n';
+        overlayText += 'click to add body';
+        document.getElementById('overlay').textContent = overlayText;
+
+        if (aliveBodies.length === 0) return;
+
+        var energy = totalEnergy(aliveBodies);
+        var L = totalL(aliveBodies);
+
+        if (initialEnergy === null) initialEnergy = energy.total; // store initial for drift calc
+
+        document.getElementById('eKE').textContent = energy.KE.toExponential(3);
+        document.getElementById('ePE').textContent = energy.PE.toExponential(3);
+        document.getElementById('eTotal').textContent = energy.total.toExponential(3);
+        document.getElementById('eL').textContent = L.toExponential(3);
+
+        // show energy drift in a bar
+        var drift = 0;
+        if (initialEnergy !== 0) {
+            drift = Math.abs((energy.total - initialEnergy) / initialEnergy) * 100;
+        }
+        var barPct = drift > 100 ? 100 : drift;
+        document.getElementById('energyFill').style.width = barPct + '%';
+
+        if (trackCOM) {
+            var tm = 0;
+            var cx = 0;
+            var cy = 0;
+            for (var i = 0; i < aliveBodies.length; i++) {
+                tm += aliveBodies[i].mass;
+                cx += aliveBodies[i].mass * aliveBodies[i].x;
+                cy += aliveBodies[i].mass * aliveBodies[i].y;
+            }
+            if (tm > 0) {
+                camX = getW() / 2 - (cx / tm) * camScale;
+                camY = getH() / 2 + (cy / tm) * camScale;
+            }
+        }
+    }
+
+    var frameCount = 0;
+
+    // main animation
+    function animate(ts) {
         requestAnimationFrame(animate);
-        rk4(bodies, FIXED_DT);
-        mergeCollisions(bodies);
-        if (showTrails) {
-            for (var i = 0; i < bodies.length; i++) {
-                if (bodies[i].alive) {
-                    bodies[i].recordTrail();
-                }
-            }
+
+        if (!lastFrame) {
+            lastFrame = ts;
+            return;
         }
-        for (var i = 0; i < bodies.length; i++) {
-            if (bodies[i].alive) {
-                for (var j = 0; j < bodies[i].history.length; j++) {
-                    bodies[i].history[j].age++;
-                }
-            }
+
+        lastFrame = ts;
+
+        if (running) {
+            var dt = FIXED_DT * speedMult;
+            if (dt > MAX_DT) dt = MAX_DT; 
+            simStep(bodies, dt, 4);
+            simTime += dt;
         }
-        simTime += FIXED_DT;
-        draw();
+
+        // render current state
+        drawScene(bodies);
+
+        frameCount++;
+
+        // cut frame count
+        if (frameCount % 2 === 0) {
+            updateStats();
+        }
+
+        if (frameCount % 20 === 0) {
+            updateBodyList();
+        }
     }
 
-    animate();
+    document.getElementById('btnPlayPause').addEventListener('click', function() {
+        running = !running;
+        if (running) {
+            this.textContent = '⏸ Pause';
+        } else {
+            this.textContent = '▶ Play';
+        }
+    });
+
+    document.getElementById('btnReset').addEventListener('click', function() {
+        loadPreset(currentPreset);
+    });
+
+    document.getElementById('btnStep').addEventListener('click', function() {
+        if (!running) {
+            simStep(bodies, stepSize, 4);
+            simTime += stepSize;
+            drawScene(bodies);
+            updateStats();
+            updateBodyList();
+        }
+    });
+
+    document.getElementById('speedSlider').addEventListener('input', function() {
+        var val = parseFloat(this.value);
+        speedMult = Math.pow(10, val);
+        
+        document.getElementById('speedVal').textContent = speedMult.toFixed(1) + '×';
+    });
+    
+    document.getElementById('stepSlider').addEventListener('input', function() {
+        var val = parseFloat(this.value);
+        stepSize = Math.pow(10, val);
+        var display;
+        if (stepSize < 0.01) {
+            display = stepSize.toFixed(4);
+        } else {
+            display = stepSize.toFixed(3);
+        }
+
+        document.getElementById('stepVal').textContent = display + ' yr';
+    });
+
+    var presetBtns = document.querySelectorAll('.preset-btn');
+    for (var pi = 0; pi < presetBtns.length; pi++) {
+        (function(btn) {
+            btn.addEventListener('click', function() {
+                loadPreset(btn.dataset.preset);
+            });
+
+        })(presetBtns[pi]);
+    }
+
+    // window resize
+    window.addEventListener('resize', function() {
+        resizeCanvas();
+        camX = getW() / 2;
+        camY = getH() / 2;
+    });
+
+    // initialize everything
+    resizeCanvas();
+    loadPreset('solar-system');
+    requestAnimationFrame(animate); // start animation loop
 
 
     </script>
