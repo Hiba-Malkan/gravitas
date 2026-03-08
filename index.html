@@ -5,31 +5,461 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gravitas</title>
     <link rel="stylesheet" href="css/main.css">
+    <style>
+        body {
+          overflow-x: hidden; 
+          cursor: none;
+        }
+
+        #bgCanvas {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+        }
+
+        nav {
+          position: relative;
+          z-index: 10;
+        }
+
+        .page {
+          position: relative;
+          z-index: 1;
+        }
+
+        .hero {
+          min-height: 52vh;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-end;
+          padding-bottom: 48px;
+          border-bottom: 1px solid var(--border);
+          margin-bottom: 0; 
+        }
+
+        .hero-kicker {
+          font-size: 10px;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: var(--green);
+          margin-bottom: 16px;
+        }
+
+        h1 {
+          font-family: 'IBM Plex Sans', sans-serif;
+          font-size: clamp(3rem, 8vw, 7rem);
+          font-weight: 600;
+          line-height: 0.95;
+          color: #fff;
+          margin-bottom: 28px; 
+          letter-spacing: -0.04em;
+        }
+
+        h1 em {
+          font-style: italic;
+          color: var(--green);
+        }
+
+        .hero-sub {
+          font-size: 12px;
+          color: var(--dim);
+          max-width: 380px;
+          line-height: 1.9;
+          margin-bottom: 32px;
+        }
+
+        .hero-cta {
+          display: flex;
+          gap: 10px;
+        }
+
+        .tools {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .tool {
+          position: relative;
+          display: block;
+          padding: 36px 0px;
+          border-bottom: 1px solid var(--border);
+          text-decoration: none;
+          color: inherit;
+          overflow: hidden;
+          transition: padding-left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .tool:hover {
+          padding-left: 20px;
+        }
+
+        .tool::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: var(--green);
+          transform: scaleY(0);
+          transform-origin: bottom;
+          transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .tool:hover::before {
+          transform: scaleY(1);
+        }
+
+        .tool-inner {
+          display: flex;
+          align-items: baseline;
+          gap: 0;
+        }
+        
+        .tool-num {
+          font-size: 10px;
+          color: var(--dim);
+          letter-spacing: 0.1em;
+          min-width: 44px;
+          flex-shrink: 0;
+        }
+
+        .tool-name {
+          font-family: 'IBM Plex Sans', sans-serif;
+          font-size: clamp(1.8rem, 4vw, 3.2rem);
+          font-weight: 600;
+          color: var(--text);
+          transition: color 0.2s;
+          flex: 1;
+          letter-spacing: -0.03em;
+          line-height: 1;
+        }
+
+        .tool:hover .tool-name {
+          color: #fff;
+        }
+
+        .tool-arrow {
+          font-size: 1.6rem;
+          color: var(--dimmer);
+          transition: color 0.2s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+          align-self: center;
+        }
+
+        .tool:hover .tool-arrow {
+          color: var(--green);
+          transform: translateX(10px) rotate(-45deg);
+        }
+
+        .tool-sub {
+          font-size: 10px;
+          color: var(--dim);
+          letter-spacing: 0.08em;
+          margin-top: 6px;
+          padding-left: 44px;
+          transition: color 0.2s;
+        }
+
+        .tool:hover .tool-sub {
+          color: var(--text);
+        }
+
+        footer {
+          border-top: 1px solid var(--border);
+          padding: 20px 0;
+          font-size: 10px;
+          color: var(--dimmer);
+          display: flex;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px;
+          letter-spacing: 0.06em;
+          margin-top: 0;
+        }
+
+        footer a {
+          color: var(--dim);
+        }
+
+        footer a:hover {
+          color: var(--text);
+        }
+
+        .cursor {
+          position: fixed;
+          width: 6px;
+          height: 6px;
+          background: var(--green);
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 9999; 
+          opacity: 0;
+          transition: opacity 0.3s, transform 0.2s ease;
+          box-shadow: 0 0 10px var(--green), 0 0 20px rgba(57, 255, 133, 0.4);
+        }
+
+        .cursor.active {
+          opacity: 1;
+        }
+
+        .cursor.hover {
+          transform: scale(2.5);
+          box-shadow: 0 0 15px var(--green), 0 0 30px rgba(57, 255, 133, 0.6);
+        }
+  </style>
 </head>
 
 <body>
+
+  <div class="cursor"></div>
+  <canvas id="bgCanvas"></canvas>
+
     <nav>
         <span class="nav-logo">Gravitas</span>
-        <a href="sims/nbody.html">N-Body</a>
+        <a href="index.html" class="active" >Home</a>
+        <a href="sims/nbody.html" >N-Body</a>
+        <a href="sims/hohmann.html" >Hohmann Transfer</a>
+        <a href="sims/lagrange.html" >Lagrange Points</a>
         <span class="nav-spacer"></span>
         <span class="nav-status">ONLINE</span>
     </nav>
 
     <div class="page">
 
-        <h1 style="margin-bottom: 20px;">
-            lorem ipsum
-        </h1>
+      <div class="hero">
+        <div class="hero-kicker">lorem ipsum dorem</div>
+        <h1>ipsum dorem <br><em>dorem dorem</em></h1>
+        <p class="hero-sub">lorem ipsum dorem dorem ipsum</p>
+        <div class="hero-cta">
+          <a href="sims/nbody.html" class=" btn btn-primary">N-Body</a>
+          <a href="sims/hohmann.html" class=" btn btn-ghost">Hohmann Transfer</a>
+          <a href="sims/lagrange.html" class=" btn btn-ghost">Lagrange Points</a>
+        </div>
+      </div>
 
-        <p style="color: var(--dim); max-width: 520px; margin-bottom: 24px;">
-            lorem ipsum
-        </p>
+      <div class="tools">
+        <a href="sims/nbody.html" class="tool">
+          <div class="tool-inner">
+            <span class="tool-num">01</span>
+            <span class="tool-name">N-Body Gravity</span>
+            <span class="tool-arrow">→</span>
+          </div>
+          <div class="tool-sub">lorem ipsum dorem.</div>
+        </a>
+        <a href="sims/hohmann.html" class="tool">
+          <div class="tool-inner">
+            <span class="tool-num">02</span>
+            <span class="tool-name">Hohmann Transfer</span>
+            <span class="tool-arrow">→</span>
+          </div>
+          <div class="tool-sub">lorem ipsum dorem.</div>
+        </a>
+        <a href="sims/lagrange.html" class="tool">
+          <div class="tool-inner">
+            <span class="tool-num">03</span>
+            <span class="tool-name">Lagrange Points</span>
+            <span class="tool-arrow">→</span>
+          </div>
+          <div class="tool-sub">lorem ipsum dorem.</div>
+        </a>
+      </div>
 
-        <a href="sims/nbody.html" class="btn btn-primary">
-            N-Body Simulator
-        </a> 
-        
+      <footer>
+        <span>Gravitas — built for <a href="https://hackclub.com">Hack Club</a></span>
+      </footer>
+
     </div>
+
+    <script>
+      // bg setup
+      var canvas = document.getElementById('bgCanvas');
+      var ctx = canvas.getContext('2d');
+
+      var W = window.innerWidth;
+      var H = window.innerHeight;
+      canvas.width = W;
+      canvas.height = H;
+
+      window.addEventListener('resize', function() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = W;
+        canvas.height = H;
+        ox = W * 0.72;
+        oy = H * 0.38;
+        
+        // update orbit sizes
+        orbs[0].rx = W * 0.38;
+        orbs[0].ry = W * 0.18;
+        orbs[1].rx = W * 0.28;
+        orbs[1].ry = W * 0.13;
+        orbs[2].rx = W * 0.18;
+        orbs[2].ry = W * 0.08;
+      });
+
+      //stars
+      var stars = [];
+      for (var i = 0; i < 180; i++) {
+        stars.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          r: Math.random() * 1.1 + 0.2, 
+          drift: (Math.random() - 0.5) * 0.06,
+          phase: Math.random() * Math.PI * 2,
+          speed: Math.random() * 0.004 + 0.001
+        });
+      }
+
+      var ox = W * 0.72, oy = H * 0.38;
+
+      var orbs= [
+        {
+          rx: W * 0.38,
+          ry: W * 0.18,
+          angle: 2.8,
+          speed: 0.0004,
+          r: 2.5,
+          color: '#4fc3f7'
+        },
+        {
+          rx: W * 0.28,
+          ry: W * 0.13,
+          angle: 2,
+          speed: 0.0007,
+          r: 2,
+          color: '#39ff85'
+        },
+
+        {
+          rx: W * 0.18,
+          ry: W * 0.08,
+          angle: 4,
+          speed: 0.0012,
+          r: 1.5,
+          color: '#e8c07a'
+        }
+      ];
+
+      function frame() {
+        requestAnimationFrame(frame);
+        ctx.clearRect(0, 0, W, H);
+
+        // update angles
+        for (var i = 0; i < orbs.length; i++) {
+          orbs[i].angle += orbs[i].speed;
+        }
+
+        // orbit ellipses
+        for (var i = 0; i < orbs.length; i++) {
+          var o = orbs[i];
+          ctx.beginPath();
+          ctx.ellipse(ox, oy, o.rx, o.ry, -0.15, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(30, 35, 48, 0.7)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        // orbiting dots
+        for (var i = 0; i < orbs.length; i++) {
+          var o = orbs[i];
+          
+          // calculate position on rotated ellipse
+          var cosA = Math.cos(o.angle);
+          var sinA = Math.sin(o.angle);
+          var cosR = Math.cos(-0.15);
+          var sinR = Math.sin(-0.15);
+          
+          var x = ox + (o.rx * cosA * cosR - o.ry * sinA * sinR);
+          var y = oy + (o.rx * cosA * sinR + o.ry * sinA * cosR);
+
+          // glow
+          var g = ctx.createRadialGradient(x, y, 0, x, y, o.r * 4);
+          g.addColorStop(0, o.color + '44');
+          g.addColorStop(1, 'transparent');
+          ctx.beginPath();
+          ctx.arc(x, y, o.r * 4, 0, Math.PI * 2);
+          ctx.fillStyle = g;
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(x, y, o.r, 0, Math.PI * 2);
+          ctx.fillStyle = o.color;
+          ctx.fill();
+        }
+
+        // sun at center
+        var sunGlow = ctx.createRadialGradient(ox, oy, 0, ox, oy, 18);
+        sunGlow.addColorStop(0, 'rgba(253, 184, 19, 0.35)');
+        sunGlow.addColorStop(1, 'transparent');
+        ctx.beginPath();
+        ctx.arc(ox, oy, 18, 0, Math.PI * 2);
+        ctx.fillStyle = sunGlow;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(ox, oy, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#FDB813';
+        ctx.fill();
+
+        // drifting stars
+        for (var i = 0; i < stars.length; i++) {
+          var s = stars[i];
+          s.phase += s.speed;
+          s.x += s.drift;
+
+          if (s.x > W + 2) s.x = -2;
+          if (s.x < -2) s.x = W + 2;
+
+          var alpha = 0.25 + 0.45 * Math.abs(Math.sin(s.phase));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(200, 212, 240, ' + alpha.toFixed(2) + ')';
+          ctx.fill();
+        }
+      }
+
+    requestAnimationFrame(frame);
+
+    //custom cursor
+    var cursor = document.querySelector('.cursor');
+    var mouseX = 0;
+    var mouseY = 0;
+    var cursorX = 0;
+    var cursorY = 0;
+
+    document.addEventListener('mousemove', function(e) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      cursor.classList.add('active');
+    });
+
+    document.addEventListener('mouseleave', function() {
+      cursor.classList.remove('active');
+    });
+
+    var interactives = document.querySelectorAll('a, button, .btn');
+
+    interactives.forEach(function(el) {
+      el.addEventListener('mouseenter', function() {
+        cursor.classList.add('hover');
+      });
+      el.addEventListener('mouseleave', function() {
+        cursor.classList.remove('hover');
+      });
+    });
+
+    function animateCursor() {
+      requestAnimationFrame(animateCursor);
+      cursorX += (mouseX - cursorX) * 0.2;
+      cursorY += (mouseY - cursorY) * 0.2;
+      cursor.style.left = cursorX + 'px';
+      cursor.style.top = cursorY + 'px';
+    }
+
+    animateCursor();
+
+    </script>
+
 
 </body>
 </html>
