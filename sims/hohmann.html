@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hohmann Transfer</title>
+    <link rel="stylesheet" href="../css/main.css">
+    
+    <style>
+        .page-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 820px) {
+            .page-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-section {
+            padding: 12px 16px
+        }
+
+        .field-label {
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--dim);
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .result-box {
+            background: var(--bg);
+            border: 1px solid var(--border2);
+            border-radius: 3px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .result-title {
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--green);
+            margin-bottom: 10px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .r-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 9px 11px;
+        }
+
+        .r-label {
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--dim);
+            margin-bottom: 3px;
+        }
+
+        .r-val {
+            font-size: 1.05rem;
+            font-family: 'IBM Plex Mono';
+            color: #fff;
+        }
+
+        .r-unit {
+            font-size: 9px;
+            color: var(--dim);
+        }
+
+        .err-msg {
+            font-size: 11px;
+            color: var(--red);
+            padding: 8px 0px;
+            display: none;
+        }
+
+        .err-msg.show {
+            display: block;
+        }
+
+        /* placeholder for now... a black box, will do properly */
+
+        .canvas-placeholder {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            aspect-ratio: 16 / 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--dimmer);
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <span class="nav-logo">Gravitas</span>
+        <a href="../index.html">Home</a>
+        <a href="../nbody.html">N-Body</a>
+        <a href="../hohmann.html">Hohmann</a>
+        <a href="../lagrange.html">Lagrange</a>
+        <span class="nav-spacer"></span>
+        <span class="nav-status">ONLINE</span>
+    </nav>
+
+    <div class="page">
+        <div class="page-title">// orbital mechanics</div>
+        <h1>Hohmann Transfer</h1>
+        <p class="lead">lorem ipsum dorem lorem ipsum dorem</p>
+
+        <div class="page-grid">
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <span>DEPARTURE</span>
+                    </div>
+                    <div class="input-section">
+                        <span class="field-label">DEPARTURE</span>
+                        <input type="number" id="r1" value="1.000" min="0.1" step="0.01">
+                        <div class="readout mt-8">
+                            <span>Orbital velocity</span>
+                            <span id="val" id="v1_display">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel mt-16">
+                <div class="panel-header">
+                    <span>ARRIVAL</span>
+                </div>
+                <div class="input-section">
+                    <span class="field-label">Orbit radius (AU)</span>
+                    <input type="number" id="r2" value="1.524" min="0.1" step="0.01">
+                    <div class="readout mt-8">
+                        <span>Orbital velocity</span>
+                        <span id="val" id="v2_display">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="err" class="err-msg">orbits must be different</div>
+            <div class="result-box">
+                <div class="result-title">// outputs</div>
+                <div class="results-grid">
+                    <div class="r-item">
+                        <div class="r-label">Delta V₁</div>
+                        <div class="r-val" id="dv1_display">-</div>
+                        <div class="r-unit">km/s</div>
+                    </div>
+                    <div class="r-item">
+                        <div class="r-label">Delta V₂</div>
+                        <div class="r-val" id="dv2_display">-</div>
+                        <div class="r-unit">km/s</div>
+                    </div>
+                    <div class="r-item">
+                        <div class="r-label">Total Δv</div>
+                        <div class="r-val" id="dvtotal">-</div>
+                        <div class="r-unit">km/s</div>
+                    </div>
+                    <div class="r-item">
+                        <div class="r-label">Travel time</div>
+                        <div class="r-val" id="tof">-</div>
+                        <div class="r-unit">days</div>
+                    </div>
+                </div>
+                <div class="readout">
+                    <span>Semi-major axis</span>
+                    <span class="val" id="sma">-</span>
+                </div>
+
+                <div class="readout">
+                    <span>Eccentricity</span>
+                    <span class="val" id="ecc">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <!--placeholder-->
+            <div class="canvas-placeholder">
+                Canvas
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        var AU = 1.496e8; // km
+        var GM_AU = 4 * Math.PI * Math.PI; // AU^3/yr^2
+        var YR = 3.156e7; // seconds
+
+        function compute() {
+            var r1 = parseFloat(document.getElementById('r1').value);
+            var r2 = parseFloat(document.getElementById('r2').value);
+
+        var err = document.getElementById('err');
+        if (!r1 || !r2 || Math.abs(r1 - r2) < 0.001) {
+            err.classList.add('show');
+            return;
+        }   
+        
+        err.classList.remove('show');
+
+        //semi-major axis
+        var sma = (r1 + r2) / 2;
+
+        //convert to km/s
+        var toKms = AU / YR;
+
+        // vis viva: v= sqrt(GM(2/r - 1/a))
+        var vt1 = Math.sqrt(GM_AU * (2 / r1 - 1 / sma)) * toKms;
+        var vt2 = Math.sqrt(GM_AU * (2 / r2 - 1 / sma)) * toKms;
+        var vc1 = Math.sqrt(GM_AU / r1) * toKms;
+        var vc2 = Math.sqrt(GM_AU / r2) * toKms
+        var dv1 = Math.abs(vt1 - vc1);
+        var dv2 = Math.abs(vc2 - vt2);
+
+        var transferYears = 0.5 * Math.sqrt(sma * sma * sma)
+        var transferDays = transferYears * 365.25;
+        var ecc = Math.abs(r2 - r1) / (r2 + r1);
+
+        document.getElementById('v1_display').textContent = vc1.toFixed(2);
+        document.getElementById('v2_display').textContent = vc2.toFixed(2);
+        document.getElementById('dv1').textContent = dv1.toFixed(3);
+        document.getElementById('dv2').textContent = dv2.toFixed(3);
+        document.getElementById('dvtotal').textContent = (dv1 + dv2).toFixed(3);
+        document.getElementById('tof').textContent = transferDays.toFixed(1);
+        document.getElementById('sma').textContent = sma.toFixed(3);
+        document.getElementById('ecc').textContent = ecc.toFixed(4);
+    
+        }
+
+        document.getElementById('r1').addEventListener('input', compute);
+        document.getElementById('r2').addEventListener('input', compute);
+        compute();
+
+    </script>
+</body>
+

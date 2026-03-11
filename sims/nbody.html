@@ -211,13 +211,13 @@
         .canvas-overlay{
             position:absolute;
             inset:auto auto auto 0;
-            top:10px;
-            left:12px;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
             font-size:11px;
-            color:#39ff8566;
-            pointer-events:none;
-            line-height:1.9;
             white-space:pre;
+            pointer-events:none;
         }
 
         .canvas-wrap{
@@ -249,20 +249,24 @@
 
 <body>
 
-<nav>
-  <span class="nav-logo">Gravitas</span>
-  <a href="../index.html">Home</a>
-  <a href="nbody.html" class="active">N-Body</a>
-  <a href="hohmann.html">Hohmann</a>
-  <a href="lagrange.html">Lagrange</a>
-  <span class="nav-spacer"></span>
-  <span class="nav-status">SIM ACTIVE</span>
-</nav>
+    <nav>
+        <span class ="nav-logo">Gravitas</span>
+        <a href="./index.html">Home</a>
+        <a href="nbody.html" class="active">N-Body</a>
+        <a href="hohmann.html">Hohmann</a>
+        <a href="lagrange.html">Lagrange</a>
+        <span class="nav-spacer"></span>
+        <span class="nav-status">SIM ACTIVE</span>
+    </nav>
 
-<div class="page">
-  <div class="page-title">// simulation</div>
-  <h1>N-Body Gravity</h1>
-  <p class="lead">4th-order Runge-Kutta gravitational simulation. Scroll to zoom, drag to pan. <strong style="color:var(--green)">Click canvas to add a body.</strong></p>
+    <div class="page">
+        <div class="page-title"> 
+            // simulation
+        </div>
+        <h1>N-Body Gravity</h1>
+        <p class="lead">
+            lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem
+        </p>
 
         <div class = "sim-layout">
             <div>
@@ -380,6 +384,7 @@
                         <input type="number" id="eccSlider" min="0" max="0.9" step="0.05" value="0" style="flex:1;font-size:10px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px">
                         <span style="font-size:10px;color:var(--dim);min-width:28px;text-align:right" id="eccVal">0.0</span>
                     </div>
+                    <div id="eccError" style="font-size:9px;color:var(--red);padding-left:0px;margin-top:4px;display:none;">Must be between 0 and less than 1</div>
                 </div>
                 <div class ="hint">
                     Click canvas to add a body. Adjust mass, velocity mode, and eccentricity above.
@@ -1348,7 +1353,20 @@
     });
 
     document.getElementById('eccSlider').addEventListener('input', function() {
-        document.getElementById('eccVal').textContent = parseFloat(this.value).toFixed(1);
+        var val = parseFloat(this.value);
+        var errorEl = document.getElementById('eccError');
+        
+        if (isNaN(val) || val < 0 || val >= 1) {
+            this.style.borderColor = 'var(--red)';
+            this.style.color = 'var(--red)';
+            errorEl.style.display = 'block';
+        } else {
+            this.style.borderColor = 'var(--border)';
+            this.style.color = 'var(--text)';
+            errorEl.style.display = 'none';
+        }
+        
+        document.getElementById('eccVal').textContent = val.toFixed(2);
     });
 
 
