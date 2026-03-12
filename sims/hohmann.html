@@ -101,19 +101,64 @@
 
         /* placeholder for now... a black box, will do properly */
 
-        .canvas-placeholder {
+        .canvas-wrap {
+            position: relative;
             background: #000;
-            border: 1px solid var(--border);
-            border-radius: 3px;
-            aspect-ratio: 16 / 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--dimmer);
-            font-size: 11px;
         }
+
+        canvas {
+            display: block;
+            width: 100%;
+        }
+
+        .canvas-overlay {
+            position: overlay;
+            top: 9px;
+            left: 12px;
+            font-size: 11px;
+            color: #39ff8566;
+            line-height: 1.9;
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .ov-val {
+            color: var(--amber);
+        }
+
+        /* planet picker grid */
+        .planet-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .planet-btn {
+            padding: 5px 3px;
+            font-size: 10px;
+            text-align: center;
+            cursor: pointer;
+            background: var(--bg);
+            border: 1px solid var(--border2);
+            color: var(--dim);
+            font-family: 'IBM Plex Mono', monospace;
+            transition: all 0.15s;
+        }
+
+        .planet-btn:hover:not(.disabled) {
+            background: var(--text);
+            color: var(--text);
+        }
+
+        .planet-btn.disabled {
+            cursor: not-allowed;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+
     </style>
 </head>
+
 <body>
     <nav>
         <span class="nav-logo">Gravitas</span>
@@ -135,13 +180,29 @@
                 <div class="panel">
                     <div class="panel-header">
                         <span>DEPARTURE</span>
+                        <span class="badge badge-amber">FROM</span>
                     </div>
                     <div class="input-section">
-                        <span class="field-label">DEPARTURE</span>
-                        <input type="number" id="r1" value="1.000" min="0.1" step="0.01">
-                        <div class="readout mt-8">
+                        <div>
+                            <div class="planet-grid" id="fromPlanets">
+                                <button class="planet-btn" data-name="Mercury" data-radius="0.387">Mercury</button>
+                                <button class="planet-btn" data-name="Venus" data-radius="0.723">Venus</button>
+                                <button class="planet-btn" data-name="Earth" data-radius="1.000">Earth</button>
+                                <button class="planet-btn" data-name="Mars" data-radius="1.524">Mars</button>
+                                <button class="planet-btn" data-name="Jupiter" data-radius="5.203">Jupiter</button>
+                                <button class="planet-btn" data-name="Saturn" data-radius="9.537">Saturn</button>
+                                <button class="planet-btn" data-name="Uranus" data-radius="19.191">Uranus</button>
+                                <button class="planet-btn" data-name="Neptune" data-radius="30.07">Neptune</button>
+                            </div>
+
+                        </div>
+                        <div class="readout">
+                            <span>Orbit radius</span>
+                            <span id="r1_display">1.000 AU</span>
+                        </div>
+                        <div class="readout">
                             <span>Orbital velocity</span>
-                            <span id="val" id="v1_display">-</span>
+                            <span class="val" id="v1_display">-</span>
                     </div>
                 </div>
             </div>
@@ -149,18 +210,31 @@
             <div class="panel mt-16">
                 <div class="panel-header">
                     <span>ARRIVAL</span>
+                    <span class="badge badge-blue">TO</span>
                 </div>
                 <div class="input-section">
-                    <span class="field-label">Orbit radius (AU)</span>
-                    <input type="number" id="r2" value="1.524" min="0.1" step="0.01">
-                    <div class="readout mt-8">
+                    <div class="planet-grid" id="toPlanets">
+                        <button class="planet-btn" data-name="Mercury" data-radius="0.387">Mercury</button>
+                        <button class="planet-btn" data-name="Venus" data-radius="0.723">Venus</button>
+                        <button class="planet-btn" data-name="Earth" data-radius="1.000">Earth</button>
+                        <button class="planet-btn" data-name="Mars" data-radius="1.524">Mars</button>
+                        <button class="planet-btn" data-name="Jupiter" data-radius="5.203">Jupiter</button>
+                        <button class="planet-btn" data-name="Saturn" data-radius="9.537">Saturn</button>
+                        <button class="planet-btn" data-name="Uranus" data-radius="19.191">Uranus</button>
+                        <button class="planet-btn" data-name="Neptune" data-radius="30.07">Neptune</button>
+                    </div>
+                    <div class="readout">
+                        <span>Orbit radius</span>
+                        <span id="r2_display">1.524 AU</span>
+                    </div>
+                    <div class="readout">
                         <span>Orbital velocity</span>
-                        <span id="val" id="v2_display">-</span>
+                        <span class="val" id="v2_display">-</span>
                     </div>
                 </div>
             </div>
 
-            <div id="err" class="err-msg">orbits must be different</div>
+            <div id="err" class="err-msg">select two different orbits!</div>
             <div class="result-box">
                 <div class="result-title">// outputs</div>
                 <div class="results-grid">
@@ -184,6 +258,7 @@
                         <div class="r-val" id="tof">-</div>
                         <div class="r-unit">days</div>
                     </div>
+
                 </div>
                 <div class="readout">
                     <span>Semi-major axis</span>
@@ -194,13 +269,23 @@
                     <span>Eccentricity</span>
                     <span class="val" id="ecc">-</span>
                 </div>
+
+                <div class="readout">
+                    <span>Phase Angle</span>
+                    <span class="val" id="phase_angle">-</span>
+                </div>
             </div>
         </div>
 
         <div>
-            <!--placeholder-->
-            <div class="canvas-placeholder">
-                Canvas
+            <div class="panel">
+                <div class="panel-header">
+                    <span>TRANSFER ORBIT</span>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="transferCanvas"></canvas>
+                    <div class="canvas-overlay" id="overlay"></div>
+                </div>
             </div>
         </div>
         </div>
@@ -211,51 +296,256 @@
         var GM_AU = 4 * Math.PI * Math.PI; // AU^3/yr^2
         var YR = 3.156e7; // seconds
 
-        function compute() {
-            var r1 = parseFloat(document.getElementById('r1').value);
-            var r2 = parseFloat(document.getElementById('r2').value);
-
-        var err = document.getElementById('err');
-        if (!r1 || !r2 || Math.abs(r1 - r2) < 0.001) {
-            err.classList.add('show');
-            return;
-        }   
+        var PLANET_DATA = {
+            "Mercury": { radius: 2.4397, color: "#b5b5b5", period: 0.241 },
+            "Venus": { radius: 6.0518, color: "#e8c07a", period: 0.615 },
+            "Earth": { radius: 6.371, color: "#4fc3f7", period: 1 },
+            "Mars": { radius: 3.3895, color: "#c1440e", period: 1.881 },
+            "Jupiter": { radius: 69.911, color: "#c88b3a", period: 11.86 },
+            "Saturn": { radius: 58.232, color: "#e4d191", period: 29.46 },
+            "Uranus": { radius: 25.362, color: "#7de8e8", period: 84.01 },
+            "Neptune": { radius: 24.622, color: "#4060ff", period: 164.8 }
+        };
         
-        err.classList.remove('show');
+        var fromName = "Earth";
+        var toName = "Mars";
+        var r1 = 1.000;
+        var r2 = 1.524;
 
-        //semi-major axis
-        var sma = (r1 + r2) / 2;
+        var currentResults = null; 
 
-        //convert to km/s
-        var toKms = AU / YR;
+        function compute() {
+            var err = document.getElementById('err');
+            if (!r1 || !r2 || Math.abs(r1 - r2) < 0.001) {
+                err.classList.add('show');
+                return;
+            }   
+            
+            err.classList.remove('show');
 
-        // vis viva: v= sqrt(GM(2/r - 1/a))
-        var vt1 = Math.sqrt(GM_AU * (2 / r1 - 1 / sma)) * toKms;
-        var vt2 = Math.sqrt(GM_AU * (2 / r2 - 1 / sma)) * toKms;
-        var vc1 = Math.sqrt(GM_AU / r1) * toKms;
-        var vc2 = Math.sqrt(GM_AU / r2) * toKms
-        var dv1 = Math.abs(vt1 - vc1);
-        var dv2 = Math.abs(vc2 - vt2);
+            // semi-major axis
+            var sma = (r1 + r2) / 2;
 
-        var transferYears = 0.5 * Math.sqrt(sma * sma * sma)
-        var transferDays = transferYears * 365.25;
-        var ecc = Math.abs(r2 - r1) / (r2 + r1);
+            // convert to km/s
+            var toKms = AU / YR;
 
-        document.getElementById('v1_display').textContent = vc1.toFixed(2);
-        document.getElementById('v2_display').textContent = vc2.toFixed(2);
-        document.getElementById('dv1').textContent = dv1.toFixed(3);
-        document.getElementById('dv2').textContent = dv2.toFixed(3);
-        document.getElementById('dvtotal').textContent = (dv1 + dv2).toFixed(3);
-        document.getElementById('tof').textContent = transferDays.toFixed(1);
-        document.getElementById('sma').textContent = sma.toFixed(3);
-        document.getElementById('ecc').textContent = ecc.toFixed(4);
-    
+            // vis viva: v = sqrt(GM(2/r - 1/a))
+            var vt1 = Math.sqrt(GM_AU * (2 / r1 - 1 / sma)) * toKms;
+            var vt2 = Math.sqrt(GM_AU * (2 / r2 - 1 / sma)) * toKms;
+            var vc1 = Math.sqrt(GM_AU / r1) * toKms;
+            var vc2 = Math.sqrt(GM_AU / r2) * toKms;
+            var dv1 = Math.abs(vt1 - vc1);
+            var dv2 = Math.abs(vc2 - vt2);
+
+            var transferYears = 0.5 * Math.sqrt(sma * sma * sma);
+            var transferDays = transferYears * 365.25;
+            var ecc = Math.abs(r2 - r1) / (r2 + r1);
+
+            // phase angle calculation
+            var fromPeriod = PLANET_DATA[fromName] ? PLANET_DATA[fromName].period : 1;
+            var toPeriod = PLANET_DATA[toName] ? PLANET_DATA[toName].period : 1.881;
+            var phaseAngle = 180 * (1 - transferYears * (1/fromPeriod - 1/toPeriod));
+
+            document.getElementById('r1_display').textContent = r1.toFixed(3) + " AU";
+            document.getElementById('r2_display').textContent = r2.toFixed(3) + " AU";
+            document.getElementById('v1_display').textContent = vc1.toFixed(2) + " km/s";
+            document.getElementById('v2_display').textContent = vc2.toFixed(2) + " km/s";
+            document.getElementById('dv1_display').textContent = dv1.toFixed(3);
+            document.getElementById('dv2_display').textContent = dv2.toFixed(3);
+            document.getElementById('dvtotal').textContent = (dv1 + dv2).toFixed(3);
+            document.getElementById('tof').textContent = transferDays.toFixed(1);
+            document.getElementById('sma').textContent = sma.toFixed(3) + " AU";
+            document.getElementById('ecc').textContent = ecc.toFixed(4);
+            document.getElementById('phase_angle').textContent = phaseAngle.toFixed(1) + "°";
+
+            currentResults = {
+                r1: r1,
+                r2: r2,
+                sma: sma,
+                ecc: ecc,
+                transferDays: transferDays,
+                phaseAngle: phaseAngle
+            };
+            drawCanvas();
         }
 
-        document.getElementById('r1').addEventListener('input', compute);
-        document.getElementById('r2').addEventListener('input', compute);
-        compute();
+        function drawCanvas() {
+            var c = document.getElementById("transferCanvas");
+            if (!c || !c.offsetWidth) return; 
+            var ctx = c.getContext("2d");
+            var dpr = window.devicePixelRatio || 1;
+            var W = c.offsetWidth;
+            var H = Math.round(W * 0.62);
+            c.style.width = W + "px";
+            c.style.height = H + "px";
+            c.width = W * dpr;
+            c.height = H * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+            var cx = W / 2;
+            var cy = H / 2;
+
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, W, H);
+
+            // stars 
+            for (var s = 0; s < 130; s++) {
+                var sx = ((s * 179 + 23) % 1000) / 1000 * W;
+                var sy = ((s * 257 + 71) % 1000) / 1000 * H;
+                var sr = s % 5 < 1 ? 1.2 : 0.45;
+                ctx.beginPath();
+                ctx.arc(sx, sy, sr, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(200, 215, 240, ' + (0.1 + (s % 7) * 0.07) + ')';
+                ctx.fill();
+            }
+
+            if (!currentResults) return;
+            var useR1 = currentResults.r1;
+            var useR2 = currentResults.r2;
+            var sma = currentResults.sma;
+            var ecc = currentResults.ecc;
+            var maxExtent = Math.max(useR1, useR2) * 1.1;
+            var scale = (Math.min(W, H) * 0.44) / maxExtent;
+
+            // sun
+            ctx.beginPath();
+            var sunGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 13);
+            sunGlow.addColorStop(0, '#fDb813');
+            sunGlow.addColorStop(0.5, '#fDb81355');
+            sunGlow.addColorStop(1, 'transparent');
+            ctx.arc(cx, cy, 13, 0, 2 * Math.PI);
+            ctx.fillStyle = sunGlow;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fDb813';
+            ctx.fill();
+
+            var fromColor = PLANET_DATA[fromName] ? PLANET_DATA[fromName].color : "#ffb83f";
+            var toColor = PLANET_DATA[toName] ? PLANET_DATA[toName].color : "#4fc3f7";
+
+            // departure orbit
+            ctx.beginPath();
+            ctx.arc(cx, cy, useR1 * scale, 0, 2 * Math.PI);
+            ctx.strokeStyle = fromColor + '66';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // arrival orbit
+            ctx.beginPath();
+            ctx.arc(cx, cy, useR2 * scale, 0, 2 * Math.PI);
+            ctx.strokeStyle = toColor + '66';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // transfer ellipse
+            var dir = useR2 > useR1 ? 1 : -1;
+            var aSc = sma * scale;
+            var cDist = ecc * aSc;
+            var bSc = Math.sqrt(Math.max(0, aSc * aSc - cDist * cDist));
+            ctx.save();
+            ctx.translate(cx - dir * cDist, cy);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, aSc, bSc, 0, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#39ff8555';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 4]);
+            ctx.stroke();
+            ctx.restore();
+
+            // departure and arrival burn dots
+            var depX = cx + (useR2 > useR1 ? 1 : -1) * useR1 * scale;
+            var arrX = cx + (useR2 > useR1 ? 1 : -1) * useR2 * scale;
+            ctx.beginPath();
+            ctx.arc(depX, cy, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffb83f';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(arrX, cy, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#4fc3f7';
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(200, 215, 240, 0.7)';
+            ctx.font = '10px IBM Plex Mono';
+            ctx.textAlign = 'center';
+            ctx.fillText('Δv₁', depX, cy - 11);
+            ctx.fillText('Δv₂', arrX, cy - 11);
+
+            // draw planets
+            function drawPlanet(angle, r, color, label) {
+                var px = cx + r * scale * Math.cos(angle);
+                var py = cy + r * scale * Math.sin(angle);
+                var pd = PLANET_DATA[label];
+                var dotSize = pd ? Math.max(3, Math.min(7, pd.radius * 0.08)) : 4;
+                var pg = ctx.createRadialGradient(px, py, 0, px, py, dotSize * 2);
+                pg.addColorStop(0, color);
+                pg.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.arc(px, py, dotSize * 2, 0, 2 * Math.PI);
+                ctx.fillStyle = pg;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(px, py, dotSize, 0, 2 * Math.PI);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.fillStyle = 'rgba(200, 215, 240, 0.7)';
+                ctx.font = '10px IBM Plex Mono';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, px, py - dotSize - 6);
+            }
+
+            drawPlanet(0, useR1, fromColor, fromName);
+            drawPlanet(currentResults.phaseAngle * (Math.PI / 180), useR2, toColor, toName);
+
+            document.getElementById('overlay').innerHTML = fromName + ' → ' + toName + ' | Δv total: <span class="ov-val">' + (parseFloat(document.getElementById('dvtotal').textContent)).toFixed(3) + ' km/s</span>';
+        }
+
+        // planet button binding
+        function bindGrid(gridId, which) {
+            var btns = document.querySelectorAll('#' + gridId + ' .planet-btn');
+            for (var i = 0; i < btns.length; i++) {
+                btns[i].addEventListener('click', function() {
+                    if (this.classList.contains('disabled')) return;
+
+                    var allBtns = document.querySelectorAll('#' + gridId + ' .planet-btn');
+                    for (var j = 0; j < allBtns.length; j++) {
+                        allBtns[j].classList.remove('sel');
+                    }
+                    this.classList.add('sel');
+
+                    if (which === 'from') {
+                        fromName = this.dataset.name;
+                        r1 = parseFloat(this.dataset.radius);
+                    } else {
+                        toName = this.dataset.name;
+                        r2 = parseFloat(this.dataset.radius);
+                    }
+                    updateDisabled();
+                    compute();
+                }.bind(btns[i]));
+            }
+        }
+
+        function updateDisabled() {
+            var fromBtns = document.querySelectorAll('#fromPlanets .planet-btn');
+            for (var i = 0; i < fromBtns.length; i++) {
+                fromBtns[i].classList.toggle('disabled', fromBtns[i].dataset.name === toName);
+            }
+            var toBtns = document.querySelectorAll('#toPlanets .planet-btn');
+            for (var i = 0; i < toBtns.length; i++) {
+                toBtns[i].classList.toggle('disabled', toBtns[i].dataset.name === fromName);
+            }
+        }
+
+        bindGrid('fromPlanets', 'from');
+        bindGrid('toPlanets', 'to');
+
+        window.addEventListener('resize', function() {
+            drawCanvas();
+        });
+
+        updateDisabled();
+        compute();
     </script>
 </body>
-
