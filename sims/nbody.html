@@ -144,7 +144,7 @@
         }
 
         .stats-list{
-            padding:14px 16px
+            padding:14px 16px;
         }
 
         .energy-bar{
@@ -218,6 +218,7 @@
             font-size:11px;
             white-space:pre;
             pointer-events:none;
+            padding:12px 16px;
         }
 
         .canvas-wrap{
@@ -254,18 +255,17 @@
         <a href="../index.html">Home</a>
         <a href="nbody.html" class="active">N-Body</a>
         <a href="hohmann.html">Hohmann</a>
-        <a href="lagrange.html">Lagrange</a>
         <span class="nav-spacer"></span>
         <span class="nav-status">SIM ACTIVE</span>
     </nav>
 
     <div class="page">
         <div class="page-title"> 
-            // simulation
+            // GRAVITATIONAL SYSTEMS
         </div>
         <h1>N-Body Gravity</h1>
         <p class="lead">
-            lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem lorem ipsum dorem
+            Simulate gravitational interactions between bodies, and watch systems stabilize, collapse, or even eject bodies entirely.
         </p>
 
         <div class = "sim-layout">
@@ -386,9 +386,6 @@
                     </div>
                     <div id="eccError" style="font-size:9px;color:var(--red);padding-left:0px;margin-top:4px;display:none;">Must be between 0 and less than 1</div>
                 </div>
-                <div class ="hint">
-                    Click canvas to add a body. Adjust mass, velocity mode, and eccentricity above.
-                </div>
             </div>
 
             <div class="panel">
@@ -401,7 +398,7 @@
             </div>
 
             <div class ="panel">
-                <div class="panel-header" style="padding:0 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px">
+                <div class="panel-header">
                     <span>ENERGY</span>
                     <span class="badge badge-green">CONSERVED</span>
                 </div>
@@ -1425,7 +1422,7 @@
             html += '<div class="body-row">';
             html += '<div class="body-dot" style="background:' + b.color + '"></div>';
             html += '<span class="body-name">' + b.name + '</span>';
-            html += '<span class="body-mass">' + b.mass.toExponential(1) + ' M\u2609</span>';
+            html += '<span class="body-mass">' + b.mass.toExponential(1) + ' M \u2609</span>';
             html += '</div>';
         }
         listEl.innerHTML = html;
