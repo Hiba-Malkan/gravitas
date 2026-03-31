@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lagrange Points</title>
+    <body>
+        <style>
+            body {
+                background: #0d0f14; 
+                color: #ccc;
+                font-family: monospace;
+                padding: 20px;
+            }
+
+            canvas {
+                display: block;
+                background: #000;
+                border: 1px solid #222;
+            }
+
+            h1 {
+                color: #fff;
+                margin-bottom: 4px;
+                font-size: 18px;
+            }
+
+            p {
+                color: #666;
+                font-size: 12px;
+                margin-bottom: 16px;
+            }
+
+            .info {
+                margin-top: 12px;
+                font-size: 11px;
+                color: #888;
+            }
+
+            .info span {
+                color: #ffb83f;
+                margin-left: 8px;
+            }
+        </style>
+    </body>
+</head>
+
+<body>
+
+    <h1>Lagrange Points</h1>
+    <p>placeholder text- lorem ipsum dorem</p>
+
+    <!-- placeholder canvas -->
+    <canvas id="c" width="700" height="440"></canvas>
+
+    <div class="info">
+        mu: <span id="imu">-</span>
+        &nbsp;&nbsp;L1: <span id="il1">-</span>
+        &nbsp;&nbsp;L2: <span id="il2">-</span>
+    </div>
+
+<script>
+
+    // sun and earth system
+    // mass ration is M1/M2
+
+    const SYS = {
+        m1: {
+            name: 'Sun',
+            color: '#fd8813',
+            r: 16
+        },
+
+        m2: {
+            name: 'Earth',
+            color: '#4fc3f7',
+            r: 7
+        },
+        ratio: 333000,
+    }
+
+    // mu is the reduced mass parameter- everything in the rotating frame is in terms of this
+    // m1 is at x = -mu, 
+    // m2 at x = 1 - mu, 
+    // separation = 1
+    function getMu (ratio) {
+        return 1 / (1 + ratio);
+    }
+
+    const W = 700;
+    const H = 440;
+
+    function sx(nx) {
+        return (nx + 1.8) / 3.6 * W;
+    }
+
+    function sy(ny) {
+        return (1 - (ny + 1.2) / 2.4) * H;
+    }
+
+    function newton (f, x) {
+        for (let i = 0; i < 100; i++) {
+            const h = 1e-9;
+            const df = (f(x + h) - f(x-h)) / (2 * h);
+            if (Math.abs(df) < 1e-15) break;
+            const step = f(x) / df;
+            x -= step;
+            if (Math.abs(step) < 1e-12) break;
+        }
+        return x;
+    }
+
+    function solveLP(mu) {
+        const fL1 = x => x - (1 - mu) / (x + mu)**2 + mu / (x - (1 - mu))**2;
+        const fL2 = x => x - (1 - mu) / (x + mu)**2 - mu / (x - (1 - mu))**2;
+        const fL3 = x => x + (1 - mu) / (x + mu)**2 + mu / (x - (1 - mu))**2;
+
+        const hill = Math.cbrt(mu / 3);
+
+        return {
+            L1: { x: newton(fL1, (1 - mu) - hill), y: 0, col: '#ff5f5f' },
+            L2: { x: newton(fL2, (1 - mu) + hill), y: 0, col: '#4fc3f7' },
+            L3: { x: newton(fL3, -(1 + mu/6)), y: 0, col: '#ffb83f' },
+            L4: { x: 0.5 - mu, y: Math.sqrt(3) / 2, col: '#39ff85' },
+            L5: { x: 0.5 - mu, y: -Math.sqrt(3) / 2, col: '#39ff85' }
+        };
+    }
+
+    function drawBody(ctx, x, y, col, r, label) {
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 2.5);
+        glow.addColorStop(0, col);
+        glow.addColorStop(0.5, col + '77');
+        glow.addColorStop(1, 'transparent');
+        ctx.beginPath();
+        ctx.arc(x, y, r * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.fillText(label, x + r + 6, y + 4);
+    }
+
+    function render() {
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        const mu = getMu(SYS.ratio);
+        const lp = solveLP(mu);
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, W, H);
+
+        for (let i = 0; i < 120; i++) {
+            ctx.beginPath();
+            ctx.arc(((i * 179 + 31) % 997) / 997 * W, ((i * 257 + 71) % 991) / 991 * H, i % 5 < 1 ? 1.2 : 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(200,215,240,${0.1 + (i % 8) * 0.06})`;
+            ctx.fill();
+        }
+
+        const orbitR = (1 - mu) * W / 3.6;
+        ctx.beginPath();
+        ctx.arc(sx(-mu), sy(0), orbitR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,100,0.25)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        Object.entries(lp).forEach(([key, pt]) => {
+            const px = sx(pt.x);
+            const py = sy(pt.y);
+            if (!isFinite(px) || !isFinite(py)) return;
+            ctx.beginPath();
+            ctx.arc(px, py, 5, 0, Math.PI * 2);
+            ctx.fillStyle = pt.col;
+            ctx.fill();
+            ctx.fillStyle = pt.col;
+            ctx.font = '11px monospace';
+            const ox = key == 'L3' ? -18 : 8;
+            const oy = key == 'L4' ? -10 : key == 'L5' ? 14 : -2;
+            ctx.fillText(key, px + ox, py + oy);
+        });
+
+        drawBody(ctx, sx(-mu), sy(0), SYS.m1.color, SYS.m1.r, SYS.m1.name);
+        drawBody(ctx, sx(1-mu), sy(0), SYS.m2.color, SYS.m2.r, SYS.m2.name);
+        document.getElementById('imu').textContent = mu.toExponential(4);
+        document.getElementById('il1').textContent = lp.L1.x.toFixed(5);
+        document.getElementById('il2').textContent = lp.L2.x.toFixed(5);
+    }
+
+    render();
+    setInterval(render, 50);
+
+</script>
+</body>
