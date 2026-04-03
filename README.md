@@ -37,7 +37,7 @@ In the rotating reference frame of a two body system (consider Sun-Earth), there
 
 L1, L2 and L3 all lie along the line joining the two bodies in the system. These points are unstable. L4 and L5 sit 60° ahead and behind the smaller/secondary body (Earth in this case). These two points are stable, which is why approx. 7,000 Trojan asteroids have collected at Jupiter's L4 and L5 points. 
 
-This simualation visualises these five lagrange points for five systems (Sun-Earth, Earth-Moon, Sun-Jupiter, Sun-Mars, Sun-Venus) and shows a heatmap for effective potential in the background as well. The secondary body is also animated, and orbits around the primary body when it is toggled on. 
+This simualation visualises these five lagrange points for five systems (Sun-Earth, Earth-Moon, Sun-Jupiter, Sun-Mars, Sun-Venus) and shows a heatmap for effective potential in the background as well. The secondary body is also animated, and orbits around the primary body.
 
 ## How to run
  
