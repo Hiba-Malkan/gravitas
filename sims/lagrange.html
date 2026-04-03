@@ -37,7 +37,8 @@
                 letter-spacing: 0.05em;
                 cursor: pointer;
                 border-radius: 3px; 
-                border: 1px solid transparent; 
+                border: 1px solid var(--border2);
+                background: transparent;
                 color: var(--dim);
                 transition: all 0.15s;
             }
@@ -116,7 +117,7 @@
                 margin-bottom: 0;
             }
 
-            .toggle-label input [type="checkbox"] {
+            .toggle-label input[type="checkbox"] {
                 accent-color: var(--amber);
             }
 
@@ -195,7 +196,13 @@
 
             .lp-stable-badge.stable {
                 background: rgba(57, 255, 133, 0.1);
-                color: #ff5f5f; 
+                color: #39ff85; 
+                border: 1px solid rgba(57, 255, 133, 0.27);
+            }
+
+            .lp-stable-badge.unstable {
+                background: rgba(255, 95, 95, 0.1);
+                color: #ff5f5f;
                 border: 1px solid rgba(255, 95, 95, 0.27);
             }
 
@@ -224,15 +231,15 @@
         <nav>
             <span class ="nav-logo">Gravitas</span>
             <a href="../index.html">Home</a>
-            <a href="../nbody.html">N-Body</a>
-            <a href="../hohmann.html">Hohmann</a>
-            <a href="../lagrange.html">Lagrange</a>
+            <a href="nbody.html">N-Body</a>
+            <a href="hohmann.html">Hohmann</a>
+            <a href="lagrange.html" class="active">Lagrange</a>
             <span class="nav-spacer"></span>
             <span class="nav-status">ONLINE</span>
         </nav>
 
         <div class="page">
-            <div class="page-title">// placeholder</div>
+            <div class="page-title">// equilibrium points</div>
             <h1>Lagrange Points</h1>
             <p class="lead">
                 Every two-body system has five Lagrange points, equilibrium positions where a small third object experiences zero net force (in a rotating frame).
