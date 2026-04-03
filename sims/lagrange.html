@@ -7,7 +7,6 @@
         <link rel="stylesheet" href="../css/main.css">
         <style>
             /* layout */
-
             .page-layout {
                 display: grid;
                 grid-template-columns: 1fr 310px;
@@ -314,7 +313,7 @@
 
                             <div class="readout">
                                 <span>L4/L5 stable</span>
-                                <span class="val" id="rStable">-</span>
+                                <span class="val" id="rdStable">-</span>
                             </div>
 
                             <div class="readout">
@@ -354,7 +353,7 @@
                 massRatio: 333000,
                 period: '1 year',
                 viewScale: 1.35, // defuatl framing
-                desc: "lorem ipsum dorem",
+                desc: "This is the most studied of the five systems in this simulation. L1 and L1 sit approx. 1.5 million km from Earth and host most of the major space observatories currently in operation.",
                 examples: {
                     L1: 'SOHO, DSCOVR, ACE',
                     L2: 'JWST, Herschel, Planck, Gaia',
@@ -375,7 +374,7 @@
                 massRatio: 81.3,
                 period: '27.3 days',
                 viewScale: 1.35,   
-                desc: "lorem ipsum",
+                desc: "The smallest system among the five, the points are close and well-studied and important for monitoring lunar missions.",
                 examples: {
                     L1: 'Proposed lunar relay',
                     L2: 'Proposed lunar farside relay',
@@ -396,7 +395,7 @@
                 massRatio: 1047,
                 period: '11.86 years',
                 viewScale: 1.35,
-                desc: 'lorem ipsum',
+                desc: 'The only system discussed in this simulation, where L4 and L5 have a substantial natural population. Over 7,000 Trojan asteroids are known to exist at these two points.',
                 examples: {
                     L1: 'Close to Jupiter',
                     L2: 'Close to Jupiter',
@@ -413,7 +412,7 @@
                 massRatio: 3093000,
                 period: '1.88 years',
                 viewScale: 1.35,
-                desc: 'lorem ipsum',
+                desc: 'This system is similar to the Sun-Earth system but the secondary mass is significantly smaller. A couple of Trojans exist at L4 and L5, and the collinear points are studied for future relay infrastructure.',
                 examples: {
                     L1: '~1.1M km from Mars',
                     L2: '~1.1M km from Mars',
@@ -433,7 +432,7 @@
                 massRatio: 408000,
                 period: '224.7 days',
                 viewScale: 1.35,
-                desc: 'lorem ipsum',
+                desc: 'This system is least used out of the five, the geometry, though well-defined, does not lend itself to many practical applications and no mission have been placed here, and no Trojan population confirmed.',
                 examples: {
                     L1: 'Solar monitoring candidate',
                     L2: 'Nightside Venus observer',
@@ -449,27 +448,28 @@
             L1: {
                 title: 'L1- Inner Collinear',
                 stable: false,
-                desc: 'lorem ipsum',
+                desc: 'It is the innermost collinear point, located between the two bodies. It is gravitationally unstable, and suited for continuous observation of the primary body.',
             },
             L2: {
                 title: 'L2- Outer Collinear',
                 stable: false,
-                desc: 'lorem ipsum',
+                desc: 'It is located beyond the secondary body, and is also unstable, but offers a stable thermal env. and an unobstructed view of deep space, making it ideal for space telescopes.',
             },
             L3: {
                 title: 'L3- Far Collinear',
                 stable: false,
-                desc: 'lorem ipsum',
+                desc: 'Located on the opposite side of the primary body, it is never directly visible from the secondary body. It is unstable and largely unaccessible, but has been proposed for use as a relay point for deep space missions or a location for solar observation without Earth interference.',
+
             },
             L4: {
                 title: 'L4- Leading Trojan',
                 stable: true,
-                desc: 'lorem ipsum',
+                desc: 'It is located on the opposite side of the primary body, leading the secondary body by 60°, forming an equilateral triangle with both the masses. It is stable for mass ratios approx. >25.',
             },
             L5: {
                 title: 'L5- Trailing Trojan',
                 stable: true,
-                desc: 'lorem ipsum',
+                desc: 'It is equivalent to L4, but trails the secondary body 60° behind in its orbit instead of leading. It shares the same stability and geometric properties as L4.'
             },
         };
 
@@ -923,6 +923,7 @@
         
         document.getElementById('togAnimate').addEventListener('change', e => {
             showOrbit = e.target.checked;
+            document.getElementById('playBtn').textContent = showOrbit ? '⏸' : '▶';
         });
         
         window.addEventListener('resize', () => {

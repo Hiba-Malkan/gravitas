@@ -9,7 +9,7 @@ I hope to add lagrange points simulation in a future update.
 
 ## Why I made it? 
 
-I like physics and math and plan to major in either one in the future. I also have college application coming up. This made a great personal project to showcase my passion for physics in my college applications. 
+I like physics and math and plan to major in either one in the future. I also have college applications coming up. This made a great personal project to showcase my passion!
 
 ---
 
@@ -30,6 +30,15 @@ A Hohmann Transfer is a two-burn maneuver thats moves a spacecraft between two c
 
 This simulation calculates the two burns, transfer time, phase angle for any two planetary orbits (in planet mode), and animates the spacecraft travelling the path. Satellite mode does the same for orbits around any solar system body, in km, and allows you to change the altitude and inclination as well. 
 
+### Lagrange Points
+The n-body problem asks how N objects move under gravitational forces, but what about a point where an object stays still? 
+
+In the rotating reference frame of a two body system (consider Sun-Earth), there are five points where gravity from both bodies and the centrifugal force (psuedo-force) of the frame all cancel out. 
+
+L1, L2 and L3 all lie along the line joining the two bodies in the system. These points are unstable. L4 and L5 sit 60° ahead and behind the smaller/secondary body (Earth in this case). These two points are stable, which is why approx. 7,000 Trojan asteroids have collected at Jupiter's L4 and L5 points. 
+
+This simualation visualises these five lagrange points for five systems (Sun-Earth, Earth-Moon, Sun-Jupiter, Sun-Mars, Sun-Venus) and shows a heatmap for effective potential in the background as well. The secondary body is also animated, and orbits around the primary body when it is toggled on. 
+
 ## How to run
  
 ```bash
@@ -43,11 +52,9 @@ Then open `http://localhost:8080` in your browser.
 Or open `index.html` directly, no need for starting the server.  
 
 ## Tech Stack
--- HTML
-
--- CSS
-
--- Javascript 
+- HTML
+- CSS
+- Javascript 
 
 ## Equations and Math
 
@@ -117,6 +124,21 @@ $$E = \underbrace{\sum_i \frac{1}{2}m_iv_i^2}_{KE} - \underbrace{\sum_{i<j} \fra
 
 Tracked to ensure that energy doesn't drift significantly and the integator does not continue to accumulate error. In a perfect scenario this would never work, but in practice, it should only drift slightly. 
 
+### Effective Potential  
+
+$$U_{eff}(x, y) = -\frac{1}{2}(x^2 + y^2) - \frac{1-\mu}{r_1} - \frac{\mu}{r_2}$$
+
+In the rotating reference frame, the effective potential adds gravity from both bodies with the centrifugal term.
+
+### L4 and L5 Positions
+
+$$L4, L5 = \left(\frac{1}{2} - \mu,\ \pm\frac{\sqrt{3}}{2}\right)$$
+
+### L4 and L5 points Stability Condition
+
+$$\frac{M_1}{M_2} > 24.96$$
+
+L4 and L5 are stable only if the mass ratio is above 24.96 (or approx. 25). L1, L2, L3 are always unstable and have no closed form solution so it is solved numerically using Newton-Raphson method (same method as Kepler's eq. stated before). 
 
 ## Things I struggled with
 
