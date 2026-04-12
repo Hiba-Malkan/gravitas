@@ -46,22 +46,6 @@ Body.prototype.recordTrail = function() {
     }
 };
 
-Body.prototype.kineticEnergy = function() {
-    var point = {
-        x: this.x,
-        y: this.y,
-        age: 0
-    };
-    this.history.push(point);
-    if (this.history.length > this.maxTrail) {
-        this.history.splice(0, 1);
-    }
-};
-
-Body.prototype.kineticEnergy = function() {
-    return 0.5 * this.mass * (this.vx * this.vx + this.vy * this.vy);
-};
-
 // generate random background stars
 var STARS = [];
 for (var i = 0; i < 220; i++) {
@@ -455,7 +439,6 @@ function verlet(bodies, dt) {
         bodies[i].y += bodies[i].vy * dt;
     }
 
-    // get new accelaration
     var res = accelFn(bodies);
 
     // the second half step
