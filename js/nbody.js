@@ -1,46 +1,40 @@
 // notification
 function showNotification(msg, duration) {
-if (duration == undefined) duration = 3000;
-var el = document.getElementById('notification');
-el.textContent = msg;
-el.style.opacity = 1;
-setTimeout(function() {
-    el.style.opacity = 0;
-}, duration);
+    if (duration == undefined) duration = 3000;
+        var el = document.getElementById('notification');
+        el.textContent = msg;
+        el.style.opacity = 1;
+        setTimeout(function() {
+            el.style.opacity = 0;
+        }, duration);
 }
 
 // gravitational constant in AU^3/yr^2/M_sun
 var G = 4 * Math.PI * Math.PI;
 
 // softening parameter to avoid singularities
-var softening = 0.001;
+var softening = 0.05;
 var softeningSquared = softening * softening;
 
-// generate random background stars
-var STARS = [];
-for (var i = 0; i < 200; i++) {
-    STARS.push({
-        x: Math.random(),
-        y: Math.random(),
-        r: Math.random() * 1.2 + 0.2, // radius
-        a: Math.random() * Math.PI * 2, // phase for twinkling
-        spd: Math.random() * 0.003 + 0.001 // twinkle speed
-    });
-}
+// theta for barnes-hut 
+var THETA = 0.5; 
 
-// body maker
+// body maker 
 function Body(opts) {
     this.name = opts.name;
-    this.mass = opts.mass; 
-    this.x = opts.x; 
+    this.mass = opts.mass;
+    this.x = opts.x;
     this.y = opts.y;
+    // store acc. b/w steps for verlet integration
     this.vx = opts.vx;
     this.vy = opts.vy;
+    this.ax = opts.ax;
+    this.ay = opts.ay;
     this.color = opts.color;
     this.radius = opts.radius;
     this.fixed = opts.fixed || false;
     this.alive = true;
-    this.history = []; // for trail rendering
+    this.history = []; 
     this.maxTrail = 500;
 }
 
@@ -53,9 +47,32 @@ Body.prototype.recordTrail = function() {
 };
 
 Body.prototype.kineticEnergy = function() {
-    var speedSq = this.vx * this.vx + this.vy * this.vy;
-    return 0.5 * this.mass * speedSq;
+    var point = {
+        x: this.x,
+        y: this.y,
+        age: 0
+    };
+    this.history.push(point);
+    if (this.history.length > this.maxTrail) {
+        this.history.splice(0, 1);
+    }
 };
+
+Body.prototype.kineticEnergy = function() {
+    return 0.5 * this.mass * (this.vx * this.vx + this.vy * this.vy);
+};
+
+// generate random background stars
+var STARS = [];
+for (var i = 0; i < 220; i++) {
+    STARS.push({
+        x: Math.random(),
+        y: Math.random(),
+        r: Math.random() * 1.2 + 0.2, // radius
+        a: Math.random() * Math.PI * 2, // phase for twinkling
+        spd: Math.random() * 0.003 + 0.001 // twinkle speed
+    });
+}
 
 var simTime = 0;
 var FIXED_DT = 0.002;
@@ -261,6 +278,196 @@ function rk4(bodies, dt) {
     }
 }
 
+// barnes-hut quadtree node
+function BHNode(cx, cy, size) {
+    this.cx = cx;
+    this.cy = cy;
+    this.size = size;
+    this.mass = 0;
+    this.comX = 0;
+    this.comY = 0;
+    this.body = null; // if not null, this node is a leaf
+    this.nw = null;
+    this.ne = null;
+    this.sw = null;
+    this.se = null;
+}
+
+// insert a body into the quadtree
+function bhInsert(node, body) {
+    if (node.mass === 0) {
+        node.mass = body.mass;
+        node.comX = body.x;
+        node.comY = body.y;
+        node.body = body;
+        return;
+    }
+
+    var totalM = node.mass + body.mass;
+    node.comX = (node.comX * node.mass + body.x * body.mass) / totalM;
+    node.comY = (node.comY * node.mass + body.y * body.mass) / totalM;
+    node.mass = totalM;
+    if (node.body != null) {
+        var old = node.body;
+        node.body = null;
+        bhInsert(node, old);
+    }
+    bhSubInsert(node, body);
+}
+
+// figure out which quadrant body goes into
+
+function bhSubInsert(node, body) {
+    var half = node.size * 0.5; 
+    var child;
+    if (body.x <= node.cx) {
+        if (body.y >= node.cy) {
+            if (!node.nw) {
+                node.nw = new BHNode(node.cx-half, node.cy+half, half); child = node.nw;
+            }
+            child = node.nw;
+        }
+        else {
+            if (!node.sw) {
+                node.sw = new BHNode(node.cx-half, node.cy-half, half); child = node.sw;
+            }
+            child = node.sw;
+        }
+    }
+    else {
+        if (body.y >= node.cy) {
+            if (!node.ne) {
+                node.ne = new BHNode(node.cx+half, node.cy+half, half); child = node.ne;
+            }
+            child = node.ne;
+        }
+        else {
+            if (!node.se) {
+                node.se = new BHNode(node.cx+half, node.cy-half, half); child = node.se;
+            }
+            child = node.se;
+        }
+    }
+    bhInsert(child, body);
+}
+
+// accumulate force on one body from quadtree
+
+function bhAccel(node, body, out) {
+    if (node.mass == 0) {
+        return;
+    }
+    var dx = node.comX - body.x;
+    var dy = node.comY - body.y;
+    var distSq = dx*dx + dy*dy + softeningSquared;
+    if (node.body !== null && node.body === body) {
+        return; 
+    }
+
+    var dist = Math.sqrt(distSq);
+    if (node.body !== null || (node.size / dist) < THETA) {
+        var f = G * node.mass / (distSq * dist);
+        out[0] += f * dx;
+        out[1] += f * dy;
+        return; 
+    }
+    if (node.nw) bhAccel(node.nw, body, out);
+    if (node.ne) bhAccel(node.ne, body, out);
+    if (node.sw) bhAccel(node.sw, body, out);
+    if (node.se) bhAccel(node.se, body, out);
+}
+
+// build the quadtree from current bodies
+function buildBHTree(bodies) {
+    var alive = bodies.filter(function(b) {
+        return b.alive && !b.fixed;
+    });
+    var minX = Infinity; 
+    var maxX = -Infinity;
+    var minY = Infinity;
+    var maxY = -Infinity;
+
+    for (var i = 0; i < alive.length; i++) {
+        if (alive[i].x < minX) {
+            minX = alive[i].x;
+        }
+        if (alive[i].x > maxX) {
+            maxX = alive[i].x;
+        }
+        if (alive[i].y < minY) {
+            minY = alive[i].y;
+        }
+        if (alive[i].y > maxY) {
+            maxY = alive[i].y;
+        }
+    }
+
+    var cx = (minX + maxX) * 0.5;
+    var cy = (minY + maxY) * 0.5;
+    var size = Math.max(maxX - minX, maxY - minY) * 0.5 + 1;
+    var root = new BHNode(cx, cy, size);
+    for (var j = 0; j < alive.length; j++) {
+        bhInsert(root, alive[j]);
+    }
+    return root;
+}
+
+// barnes hut acceleration using quadtree
+function accelBH(bodies) {
+    var n = bodies.length;
+    var ax = new Float64Array(n);
+    var ay = new Float64Array(n);
+    if (!bodies.filter(function(b) {
+        return b.alive && !b.fixed;
+    }).length) 
+
+    return {
+        ax: ax,
+        ay: ay
+    };
+
+    var root = buildBHTree(bodies);
+    for (var i = 0; i < n; i++) {
+        if (!bodies[i].alive || bodies[i].fixed) continue;
+        var out = [0, 0];
+        bhAccel(root, bodies[i], out);
+        ax[i] = out[0];
+        ay[i] = out[1];
+    }
+
+    return {
+        ax: ax,
+        ay: ay
+    };
+}
+
+// velocity verlet integrator
+function verlet(bodies, dt) {   
+    var n = bodies.length;
+    var accelFn = useBH ? accelBH : accel;
+
+    // half step and drift
+    for (var i = 0; i < n; i++) {
+        if (!bodies[i].alive || bodies[i].fixed) continue;
+        bodies[i].vx += 0.5 * bodies[i].ax * dt;
+        bodies[i].vy += 0.5 * bodies[i].ay * dt;
+        bodies[i].x += bodies[i].vx * dt;
+        bodies[i].y += bodies[i].vy * dt;
+    }
+
+    // get new accelaration
+    var res = accelFn(bodies);
+
+    // the second half step
+    for (var i = 0; i < n; i++) {
+        if (!bodies[i].alive || bodies[i].fixed) continue;
+        bodies[i].ax = res.ax[i];
+        bodies[i].ay = res.ay[i];
+        bodies[i].vx += 0.5 * bodies[i].ax * dt;
+        bodies[i].vy += 0.5 * bodies[i].ay * dt;
+    }
+}
+
 // handle collisions between bodies
 function mergeCollisions(bodies){
     var i, j;
@@ -306,6 +513,10 @@ function mergeCollisions(bodies){
         }
     }
 }
+
+// verlet flags
+var useVerlet = false;
+var BH = false; 
 
 function simStep(bodies, dt, subSteps) {
     if (!subSteps) subSteps = 4;
@@ -934,6 +1145,23 @@ document.getElementById('eccSlider').addEventListener('input', function() {
     document.getElementById('eccVal').textContent = val.toFixed(2);
 });
 
+document.getElementById('togVerlet').addEventListener('change', function(e) {
+    useVerlet = e.target.checked;
+    if (useVerlet) {
+        useVerlet = e.target.checked;
+        if (useVerlet) {
+            var accelFn = useBH ? accelBH : accel;
+            var res = accelFn(bodies);
+            for (var i = 0; i < bodies.length; i++) {
+                bodies[i].ax = res.ax[i];
+                bodies[i].ay = res.ay[i];
+            }
+        }    
+    }
+});
+document.getElementById('togBH').addEventListener('change', function(e) {
+    useBH = e.target.checked;
+});
 
 function loadPreset(name) {
     currentPreset = name;
@@ -1091,6 +1319,8 @@ document.getElementById('btnPlayPause').addEventListener('click', function() {
 });
 
 document.getElementById('btnReset').addEventListener('click', function() {
+    running = false;
+    document.getElementById('btnPlayPause').textContent = '▶ Play';
     loadPreset(currentPreset);
 });
 

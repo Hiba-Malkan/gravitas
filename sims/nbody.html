@@ -62,6 +62,7 @@
                 <div class="preset-grid">
                     <button class="preset-btn active" data-preset="solar-system">Solar System</button>
                     <button class="preset-btn" data-preset="binary-star">Binary Star</button>
+                    <button class="preset-btn" data-preset="figure-8">Figure-8</button>
                 </div>
             </div>
 
@@ -125,6 +126,22 @@
                     </div>
 
                     <div class="control-row">
+                        <label>Verlet Integration</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togVerlet">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
+                        <label>Barnes-Hut</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="togBH">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-row">
                         <label>Add Body Mass</label>
                         <select id="addMass" style="font-size:10px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:'IBM Plex Mono',monospace">
                             <option value="3e-6">Earth (3e-6)</option>
@@ -149,6 +166,8 @@
                         <span style="font-size:10px;color:var(--dim);min-width:28px;text-align:right" id="eccVal">0.0</span>
                     </div>
                     <div id="eccError" style="font-size:9px;color:var(--red);padding-left:0px;margin-top:4px;display:none;">Must be between 0 and less than 1</div>
+
+                    
                 </div>
             </div>
 
