@@ -1,0 +1,257 @@
+.page-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 820px) {
+  .page-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.input-section {
+  padding: 12px 16px;
+}
+
+.field-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 5px;
+  display: block;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.result-box {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.result-title {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 10px;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.r-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 9px 11px;
+}
+
+.r-label {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.r-val {
+  font-size: 1.05rem;
+  font-family: 'IBM Plex Mono';
+  color: #fff;
+}
+
+.r-unit {
+  font-size: 9px;
+  color: var(--dim);
+}
+
+.planet-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.planet-btn {
+  padding: 5px 3px;
+  font-size: 10px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  transition: all 0.15s;
+}
+
+.planet-btn:hover:not(.disabled) {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.planet-btn.sel {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(255, 184, 63, 0.07);
+}
+
+.planet-btn.disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.top-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--dim);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.body-select {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.body-sel-btn {
+  padding: 6px 4px;
+  font-size: 10px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  transition: all 0.15s;
+}
+
+.body-sel-btn:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.body-sel-btn.sel {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: rgba(79, 195, 247, 0.06);
+}
+
+.err-msg {
+  font-size: 11px;
+  color: var(--red);
+  padding: 8px 0;
+  display: none;
+}
+
+.err-msg.show {
+  display: block;
+}
+
+.canvas-wrap {
+  position: relative;
+  background: #000;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+}
+
+.canvas-overlay {
+  position: absolute;
+  top: 9px;
+  left: 12px;
+  font-size: 11px;
+  color: #39ff8566;
+  pointer-events: none;
+  line-height: 1.9;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.ov-val {
+  color: var(--amber);
+}
+
+.canvas-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.play-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--green);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s;
+    flex-shrink: 0;
+}
+
+
+.play-btn:hover {
+    border-color: var(--green);
+}
+
+.ctrl-lbl {
+    font-size: 11px;
+    color: var(--dim);
+}
