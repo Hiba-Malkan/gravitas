@@ -28,8 +28,8 @@ function Body(opts) {
     // store acc. b/w steps for verlet integration
     this.vx = opts.vx;
     this.vy = opts.vy;
-    this.ax = opts.ax;
-    this.ay = opts.ay;
+    this.ax = opts.ax || 0;
+    this.ay = opts.ay || 0;
     this.color = opts.color;
     this.radius = opts.radius;
     this.fixed = opts.fixed || false;
@@ -287,14 +287,17 @@ function bhInsert(node, body) {
         return;
     }
 
+    // update COM to include new body
     var totalM = node.mass + body.mass;
     node.comX = (node.comX * node.mass + body.x * body.mass) / totalM;
     node.comY = (node.comY * node.mass + body.y * body.mass) / totalM;
     node.mass = totalM;
-    if (node.body != null) {
+
+    // if leaf, push existing body down WITHOUT re-updating COM
+    if (node.body !== null) {
         var old = node.body;
         node.body = null;
-        bhInsert(node, old);
+        bhSubInsert(node, old); // bhSubInsert only routes, never touches COM
     }
     bhSubInsert(node, body);
 }
@@ -302,37 +305,26 @@ function bhInsert(node, body) {
 // figure out which quadrant body goes into
 
 function bhSubInsert(node, body) {
-    var half = node.size * 0.5; 
+    var half = node.size * 0.5;
     var child;
     if (body.x <= node.cx) {
         if (body.y >= node.cy) {
-            if (!node.nw) {
-                node.nw = new BHNode(node.cx-half, node.cy+half, half); child = node.nw;
-            }
+            if (!node.nw) node.nw = new BHNode(node.cx-half, node.cy+half, half);
             child = node.nw;
-        }
-        else {
-            if (!node.sw) {
-                node.sw = new BHNode(node.cx-half, node.cy-half, half); child = node.sw;
-            }
+        } else {
+            if (!node.sw) node.sw = new BHNode(node.cx-half, node.cy-half, half);
             child = node.sw;
         }
-    }
-    else {
+    } else {
         if (body.y >= node.cy) {
-            if (!node.ne) {
-                node.ne = new BHNode(node.cx+half, node.cy+half, half); child = node.ne;
-            }
+            if (!node.ne) node.ne = new BHNode(node.cx+half, node.cy+half, half);
             child = node.ne;
-        }
-        else {
-            if (!node.se) {
-                node.se = new BHNode(node.cx+half, node.cy-half, half); child = node.se;
-            }
+        } else {
+            if (!node.se) node.se = new BHNode(node.cx+half, node.cy-half, half);
             child = node.se;
         }
     }
-    bhInsert(child, body);
+    bhInsert(child, body); // bhInsert handles COM update at child level
 }
 
 // accumulate force on one body from quadtree
@@ -364,7 +356,7 @@ function bhAccel(node, body, out) {
 // build the quadtree from current bodies
 function buildBHTree(bodies) {
     var alive = bodies.filter(function(b) {
-        return b.alive && !b.fixed;
+        return b.alive; 
     });
     var minX = Infinity; 
     var maxX = -Infinity;
@@ -403,13 +395,12 @@ function accelBH(bodies) {
     var ay = new Float64Array(n);
     if (!bodies.filter(function(b) {
         return b.alive && !b.fixed;
-    }).length) 
-
-    return {
-        ax: ax,
-        ay: ay
-    };
-
+    }).length) {
+        return {
+            ax: ax,
+            ay: ay
+        };
+    }
     var root = buildBHTree(bodies);
     for (var i = 0; i < n; i++) {
         if (!bodies[i].alive || bodies[i].fixed) continue;
@@ -418,7 +409,6 @@ function accelBH(bodies) {
         ax[i] = out[0];
         ay[i] = out[1];
     }
-
     return {
         ax: ax,
         ay: ay
@@ -499,56 +489,46 @@ function mergeCollisions(bodies){
 
 // verlet flags
 var useVerlet = false;
-var BH = false; 
+var useBH = false; 
 
 function simStep(bodies, dt, subSteps) {
     if (!subSteps) subSteps = 4;
 
-    var aliveBodies = [];
-    var i;
-    for (i = 0; i < bodies.length; i++) {
-        if (bodies[i].alive) aliveBodies.push(bodies[i]);
-    }
-
-    // find closest approach to adjust substeps
-    var minSep = 999999;
-    for (i = 0; i < aliveBodies.length; i++) {
-        for (var j = i + 1; j < aliveBodies.length; j++) {
-            var ddx = aliveBodies[i].x - aliveBodies[j].x;
-            var ddy = aliveBodies[i].y - aliveBodies[j].y;
-            var s = Math.sqrt(ddx * ddx + ddy * ddy);
-            if (s < minSep) minSep = s;
+    if (!useVerlet) {
+        var aliveBodies = bodies.filter(function(b) { return b.alive; });
+        var minSep = 999999;
+        for (var i = 0; i < aliveBodies.length; i++) {
+            for (var j = i + 1; j < aliveBodies.length; j++) {
+                var ddx = aliveBodies[i].x - aliveBodies[j].x;
+                var ddy = aliveBodies[i].y - aliveBodies[j].y;
+                var s = Math.sqrt(ddx*ddx + ddy*ddy);
+                if (s < minSep) minSep = s;
+            }
         }
-    }
-    
-    // adaptive timestep for close encounters
-    if (minSep < 0.5 && minSep > 0.01) {
-        var needed = Math.ceil(8 / minSep);
-        if (needed > subSteps) {
-            subSteps = needed;
+        if (minSep < 0.5 && minSep > 0.01) {
+            var needed = Math.ceil(8 / minSep);
+            if (needed > subSteps) subSteps = needed;
         }
+        if (subSteps > 16) subSteps = 16;
     }
-    if (subSteps > 16) subSteps = 16;
 
     var smallDt = dt / subSteps;
     for (var k = 0; k < subSteps; k++) {
-        rk4(bodies, smallDt);
+        if (useVerlet) verlet(bodies, smallDt);
+        else rk4(bodies, smallDt);
         mergeCollisions(bodies);
-
-        // trail points
         if (showTrails) {
-            for (i = 0; i < bodies.length; i++) {
+            for (var i = 0; i < bodies.length; i++) {
                 if (bodies[i].alive) bodies[i].recordTrail();
             }
         }
     }
 
-    for (i = 0; i < bodies.length; i++) {
+    for (var i = 0; i < bodies.length; i++) {
         if (!bodies[i].alive) continue;
         for (var p = 0; p < bodies[i].history.length; p++) {
             bodies[i].history[p].age++;
         }
-
     }
 }
 
@@ -1083,6 +1063,13 @@ canvas.addEventListener('click', function(e) {
         radius: r
     }));
 
+    // seed the new body's acceleration
+    var accelFn = useBH ? accelBH : accel;
+    var res = accelFn(bodies);
+    var idx = bodies.length - 1;
+    bodies[idx].ax = res.ax[idx];
+    bodies[idx].ay = res.ay[idx];
+
     updateBodyList();
 });
 
@@ -1131,15 +1118,12 @@ document.getElementById('eccSlider').addEventListener('input', function() {
 document.getElementById('togVerlet').addEventListener('change', function(e) {
     useVerlet = e.target.checked;
     if (useVerlet) {
-        useVerlet = e.target.checked;
-        if (useVerlet) {
-            var accelFn = useBH ? accelBH : accel;
-            var res = accelFn(bodies);
-            for (var i = 0; i < bodies.length; i++) {
-                bodies[i].ax = res.ax[i];
-                bodies[i].ay = res.ay[i];
-            }
-        }    
+        var accelFn = useBH ? accelBH : accel;
+        var res = accelFn(bodies);
+        for (var i = 0; i < bodies.length; i++) {
+            bodies[i].ax = res.ax[i];
+            bodies[i].ay = res.ay[i];
+        }
     }
 });
 document.getElementById('togBH').addEventListener('change', function(e) {
@@ -1155,35 +1139,25 @@ function loadPreset(name) {
 
     resizeCanvas();
 
-    // adjust zoom depending on preset
-    if (name === 'solar-system') {
-        camScale = 35;
-    } 
-    
-    else if (name === 'binary-star') {
-        camScale = 100;
-    } 
-    
-    else {
-        camScale = 80;
-    }
+    if (name === 'solar-system') camScale = 35;
+    else if (name === 'binary-star') camScale = 100;
+    else camScale = 80;
 
     camX = getW() / 2;
     camY = getH() / 2;
 
+    // always seed — Verlet needs valid ax/ay from frame 1
+    var res = (useBH ? accelBH : accel)(bodies);
+    for (var i = 0; i < bodies.length; i++) {
+        bodies[i].ax = res.ax[i];
+        bodies[i].ay = res.ay[i];
+    }
+
     updateBodyList();
 
-    // update button states
     var btns = document.querySelectorAll('.preset-btn');
     for (var i = 0; i < btns.length; i++) {
-        if (btns[i].dataset.preset === name) {
-            btns[i].classList.add('active');
-        } 
-
-        else 
-        {
-            btns[i].classList.remove('active');
-        }
+        btns[i].classList.toggle('active', btns[i].dataset.preset === name);
     }
 }
 
