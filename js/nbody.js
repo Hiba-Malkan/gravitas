@@ -38,6 +38,10 @@ function Body(opts) {
     this.maxTrail = 500;
 }
 
+Body.prototype.kineticEnergy = function() {
+    return 0.5 * this.mass * (this.vx * this.vx + this.vy * this.vy);
+};
+
 Body.prototype.recordTrail = function() {
     var point = {x: this.x, y: this.y, age: 0};
     this.history.push(point);
@@ -278,7 +282,8 @@ function BHNode(cx, cy, size) {
 }
 
 // insert a body into the quadtree
-function bhInsert(node, body) {
+function bhInsert(node, body, depth) {
+    depth = depth || 0;
     if (node.mass === 0) {
         node.mass = body.mass;
         node.comX = body.x;
@@ -286,25 +291,21 @@ function bhInsert(node, body) {
         node.body = body;
         return;
     }
-
-    // update COM to include new body
     var totalM = node.mass + body.mass;
     node.comX = (node.comX * node.mass + body.x * body.mass) / totalM;
     node.comY = (node.comY * node.mass + body.y * body.mass) / totalM;
     node.mass = totalM;
-
-    // if leaf, push existing body down without re-updating COM
     if (node.body !== null) {
         var old = node.body;
         node.body = null;
-        bhSubInsert(node, old);
+        bhSubInsert(node, old, depth);
     }
-    bhSubInsert(node, body);
+    bhSubInsert(node, body, depth);
 }
 
-// figure out which quadrant body goes into
-
-function bhSubInsert(node, body) {
+function bhSubInsert(node, body, depth) {
+    depth = depth || 0;
+    if (depth > 50) return;
     var half = node.size * 0.5;
     var child;
     if (body.x <= node.cx) {
@@ -324,28 +325,25 @@ function bhSubInsert(node, body) {
             child = node.se;
         }
     }
-    bhInsert(child, body); 
+    bhInsert(child, body, depth + 1);
 }
 
 // accumulate force on one body from quadtree
 
 function bhAccel(node, body, out) {
-    if (node.mass == 0) {
-        return;
-    }
+    if (node.mass === 0) return;
+
+    //self check
+    if (node.body !== null && node.body === body) return;
     var dx = node.comX - body.x;
     var dy = node.comY - body.y;
     var distSq = dx*dx + dy*dy + softeningSquared;
-    if (node.body !== null && node.body === body) {
-        return; 
-    }
-
     var dist = Math.sqrt(distSq);
     if (node.body !== null || (node.size / dist) < THETA) {
         var f = G * node.mass / (distSq * dist);
         out[0] += f * dx;
         out[1] += f * dy;
-        return; 
+        return;
     }
     if (node.nw) bhAccel(node.nw, body, out);
     if (node.ne) bhAccel(node.ne, body, out);
@@ -362,7 +360,6 @@ function buildBHTree(bodies) {
     var maxX = -Infinity;
     var minY = Infinity;
     var maxY = -Infinity;
-
     for (var i = 0; i < alive.length; i++) {
         if (alive[i].x < minX) {
             minX = alive[i].x;
@@ -377,13 +374,12 @@ function buildBHTree(bodies) {
             maxY = alive[i].y;
         }
     }
-
     var cx = (minX + maxX) * 0.5;
     var cy = (minY + maxY) * 0.5;
     var size = Math.max(maxX - minX, maxY - minY) * 0.5 + 1;
     var root = new BHNode(cx, cy, size);
     for (var j = 0; j < alive.length; j++) {
-        bhInsert(root, alive[j]);
+        bhInsert(root, alive[j], 0);
     }
     return root;
 }
@@ -420,7 +416,7 @@ function verlet(bodies, dt) {
     var n = bodies.length;
     var accelFn = useBH ? accelBH : accel;
 
-    // half step and drift
+    // half-kick and drift
     for (var i = 0; i < n; i++) {
         if (!bodies[i].alive || bodies[i].fixed) continue;
         bodies[i].vx += 0.5 * bodies[i].ax * dt;
@@ -431,7 +427,7 @@ function verlet(bodies, dt) {
 
     var res = accelFn(bodies);
 
-    // the second half step
+    // the second half-kick
     for (var i = 0; i < n; i++) {
         if (!bodies[i].alive || bodies[i].fixed) continue;
         bodies[i].ax = res.ax[i];
