@@ -13,7 +13,7 @@ function showNotification(msg, duration) {
 var G = 4 * Math.PI * Math.PI;
 
 // softening parameter to avoid singularities
-var softening = 0.05;
+var softening = 0.001;
 var softeningSquared = softening * softening;
 
 // theta for barnes-hut 
@@ -293,11 +293,11 @@ function bhInsert(node, body) {
     node.comY = (node.comY * node.mass + body.y * body.mass) / totalM;
     node.mass = totalM;
 
-    // if leaf, push existing body down WITHOUT re-updating COM
+    // if leaf, push existing body down without re-updating COM
     if (node.body !== null) {
         var old = node.body;
         node.body = null;
-        bhSubInsert(node, old); // bhSubInsert only routes, never touches COM
+        bhSubInsert(node, old);
     }
     bhSubInsert(node, body);
 }
@@ -324,7 +324,7 @@ function bhSubInsert(node, body) {
             child = node.se;
         }
     }
-    bhInsert(child, body); // bhInsert handles COM update at child level
+    bhInsert(child, body); 
 }
 
 // accumulate force on one body from quadtree
@@ -724,8 +724,45 @@ var PRESETS = {
             radius: 5
         }));
         return list;
-    }
+    },
 
+    'figure-8': function() {
+        var vs = 2 * Math.PI;
+        var list = [];
+
+        list.push(new Body({
+            name: 'Alpha',
+            mass: 1.0,
+            x: 0.9700436,
+            y: -0.2430873,
+            vx: 0.4662036850 * vs,
+            vy: 0.4323657300 * vs,
+            color: '#39ff85',
+            radius: 9
+        }));
+        list.push(new Body({
+            name: 'Beta',
+            mass: 1.0,
+            x: -0.9700436,
+            y: 0.2430873,
+            vx: 0.4662036850 * vs,
+            vy: 0.4323657300 * vs,
+            color: '#ff6b6b',
+            radius: 9
+        }));
+        list.push(new Body({
+            name: 'Gamma',
+            mass: 1.0,
+            x: 0,
+            y: 0,
+            vx: -0.9324073700 * vs,
+            vy: -0.8647314600 * vs,
+            color: '#4fc3f7',
+            radius: 9
+        }));
+
+        return list;
+    }
 };
 
 // canvas
@@ -1126,6 +1163,7 @@ document.getElementById('togVerlet').addEventListener('change', function(e) {
         }
     }
 });
+
 document.getElementById('togBH').addEventListener('change', function(e) {
     useBH = e.target.checked;
 });
@@ -1139,19 +1177,41 @@ function loadPreset(name) {
 
     resizeCanvas();
 
-    if (name === 'solar-system') camScale = 35;
-    else if (name === 'binary-star') camScale = 100;
-    else camScale = 80;
+    if (name === 'solar-system') {
+        camScale = 35;
+    }
+    else if (name === 'binary-star') {
+        camScale = 100;
+    }
+    else if (name === 'figure-8') {
+        camScale = 120;
+    }
+    else {
+        camScale = 80;
+    }
 
     camX = getW() / 2;
     camY = getH() / 2;
 
-    // always seed — Verlet needs valid ax/ay from frame 1
+    if (name == 'figure-8') {
+       useVerlet = true;
+       document.getElementById('togVerlet').checked = true;
+    }
+
     var res = (useBH ? accelBH : accel)(bodies);
     for (var i = 0; i < bodies.length; i++) {
         bodies[i].ax = res.ax[i];
-        bodies[i].ay = res.ay[i];
+       bodies[i].ay = res.ay[i];
     }
+
+    //if (useVerlet) {
+    //    var accelFn = useBH ? accelBH : accel;
+     //   var res = accelFn(bodies);
+     //   for (var i = 0; i < bodies.length; i++) {
+     //       bodies[i].ax = res.ax[i];
+     //       bodies[i].ay = res.ay[i];
+     //   }
+    //}
 
     updateBodyList();
 
