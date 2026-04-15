@@ -518,19 +518,25 @@ function simStep(bodies, dt, subSteps) {
             rk4(bodies, smallDt);
         }
         mergeCollisions(bodies);
+        
         if (showTrails) {
-            for (var i = 0; i < bodies.length; i++) {
-                if (bodies[i].alive) bodies[i].recordTrail();
+            var trailSkip = (currentPreset === 'galaxy-collision') ? 5 : 1;
+
+            if (frameCount % trailSkip === 0) {
+                    for (var i = 0; i < bodies.length; i++) {
+                        if (bodies[i].alive) {
+                            bodies[i].recordTrail();
+                        }
+                    }
             }
         }
-    }
-
     for (var i = 0; i < bodies.length; i++) {
         if (!bodies[i].alive) continue;
         for (var p = 0; p < bodies[i].history.length; p++) {
             bodies[i].history[p].age++;
         }
     }
+}
 }
 
 // calculate total system energy
@@ -820,6 +826,7 @@ var PRESETS = {
                         vy: dvy + spin * vCirc * ty,
                         color: col,
                         radius: 2,
+                        noLabel: true,
                     }));
                 }
             }
@@ -1055,14 +1062,15 @@ function drawScene(bodies) {
         var r = b.radius;
         if (r < 3) r = 3;
         
-        // glow effect
-        var glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r * 3);
-        glow.addColorStop(0, b.color + '55');
-        glow.addColorStop(1, 'transparent');
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, r * 3, 0, Math.PI * 2);
-        ctx.fillStyle = glow;
-        ctx.fill();
+        if (bodies.length < 50 && currentPreset !== 'galaxy-collision') {
+            var glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r * 3);
+            glow.addColorStop(0, b.color + '55');
+            glow.addColorStop(1, 'transparent');
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, r * 3, 0, Math.PI * 2);
+            ctx.fillStyle = glow;
+            ctx.fill();
+        }
 
         ctx.beginPath();
         ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
