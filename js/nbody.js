@@ -33,9 +33,10 @@ function Body(opts) {
     this.color = opts.color;
     this.radius = opts.radius;
     this.fixed = opts.fixed || false;
+    this.noLabel = opts.noLabel || false;
     this.alive = true;
     this.history = []; 
-    this.maxTrail = 500;
+    this.maxTrail = 300;
 }
 
 Body.prototype.kineticEnergy = function() {
@@ -474,7 +475,7 @@ function mergeCollisions(bodies){
     for (i = 0; i < bodies.length; i++) {
         if (!bodies[i].alive || bodies[i].fixed) continue;
         var d = Math.sqrt(bodies[i].x * bodies[i].x + bodies[i].y * bodies[i].y);
-        if (d > 50) {
+        if (d > 400) {
             bodies[i].alive = false;
             if (document.getElementById('togNotify').checked) {
                 showNotification(bodies[i].name + ' escaped beyond 50 AU');
@@ -510,8 +511,12 @@ function simStep(bodies, dt, subSteps) {
 
     var smallDt = dt / subSteps;
     for (var k = 0; k < subSteps; k++) {
-        if (useVerlet) verlet(bodies, smallDt);
-        else rk4(bodies, smallDt);
+        if (useVerlet) {
+            verlet(bodies, smallDt);
+        }
+        else {
+            rk4(bodies, smallDt);
+        }
         mergeCollisions(bodies);
         if (showTrails) {
             for (var i = 0; i < bodies.length; i++) {
@@ -539,6 +544,14 @@ function totalEnergy(bodies) {
         KE += bodies[i].kineticEnergy();
     }
 
+    if (bodies.length > 80) {
+        return {
+            KE: KE,
+            PE: 0,
+            total: KE
+        }
+    }
+
     // sum of GPE for all pairs
     for (i = 0; i < bodies.length; i++) {
         for (j = i + 1; j < bodies.length; j++) {
@@ -549,7 +562,11 @@ function totalEnergy(bodies) {
         }
     }
 
-    return { KE: KE, PE: PE, total: KE +  PE };
+    return { 
+        KE: KE,
+        PE: PE,
+        total: KE +  PE 
+    };
 }
 
 // calculate total angular momentum
@@ -576,7 +593,7 @@ var PRESETS = {
             vy: 0,
             color: "#FDB813",
             radius: 14,
-            fixed: true
+            fixed: false
         }));
 
         list.push(new Body({
@@ -722,6 +739,9 @@ var PRESETS = {
         return list;
     },
 
+    // figure-8 preset- barnes hut is not recommended for this system, 
+    // when you add a new body, barnes hut accumulates error very fast
+
     'figure-8': function() {
         var vs = 2 * Math.PI;
         var list = [];
@@ -758,9 +778,112 @@ var PRESETS = {
         }));
 
         return list;
-    }
-};
+    }, 
 
+    'galaxy-collision': function() {
+        var list = [];
+        function makeGalaxy(cx, cy, dvx, dvy, coreColor, palA, palB, spin) {
+            var coreMass = 8.0;
+            var radii = [1.2, 2.2, 3.4, 4.8, 6.2, 7.8, 9.0, 10.5];
+            var counts = [12,  22,  36,  48,  60,  48,  36,  20];
+            var starMass = 0.003;
+            list.push(new Body({
+                name: 'Core',
+                mass: coreMass,
+                x: cx,
+                y: cy,
+                vx: dvx,
+                vy: dvy,
+                color: coreColor,
+                radius: 13,
+            }));
+            for (var i = 0; i < radii.length; i++) {
+                var radius = radii[i];
+                var count = counts[i];
+                var vCirc = Math.sqrt(G * (coreMass + starMass) / radius);
+                var phaseOff = Math.random() * 2 * Math.PI;
+                for (var j = 0; j < count; j++) {
+                    var angle=phaseOff + (2 * Math.PI * j / count) 
+                    var sx = cx + radius * Math.cos(angle);
+                    var sy = cy + radius * Math.sin(angle);
+                    var tx = -Math.sin(angle);
+                    var ty = Math.cos(angle);
+                    var col=(Math.random() < 0.5)? palA[ Math.floor( Math.random() * palA.length)]:palB[Math.floor( Math.random()*palB.length)];
+
+                    list.push(new Body({
+                        name: 'star',
+                        mass: starMass,
+                        x: sx,
+                        y: sy,
+                        vx: dvx + spin * vCirc * tx,
+                        vy: dvy + spin * vCirc * ty,
+                        color: col,
+                        radius: 2,
+                    }));
+                }
+            }
+        }
+        makeGalaxy(-14, 6, 1.6, -0.5, '#ffe8a0', ['#ffd580','#fff0c0','#ffc840'], ['#ffb830','#ffe0a0'], +1);
+        makeGalaxy( 14,-6, -1.6, 0.5, '#FF6B6B', ['#ffaaaa','#ff8888','#ffcccc'], ['#ff6060','#ff4040'], -1);
+        return list;
+    },
+
+    // supernova scatter
+    'supernova': function() {
+        var list = [];
+        var kickSpeed = 5.5;
+
+        list.push(new Body({
+            name: 'Remnant',
+            mass: 1.4,
+            x: 0,
+            y: 0,
+            vx: 0,
+            vy: 0,
+            color: '#ffffff',
+            radius: 6,
+        }));
+
+        function addShell (n, radius, speedBase, speedRand, mass, r, getColor) {
+            for (var i = 0; i < n; i++) {
+                var angle = (2 * Math.PI * i / n) + (Math.random()-0.5) * 0.4;
+                var ro = radius * (0.85 + Math.random() * 0.3);
+                var spd = speedBase + speedRand * Math.random();
+                var tang = spd * 0.2 * (Math.random() -0.5);
+                list.push(new Body({
+                    name: 'frag',
+                    mass: mass,
+                    x: ro * Math.cos(angle),
+                    y: ro * Math.sin(angle),
+                    vx: spd * Math.cos(angle) - tang * Math.sin(angle),
+                    vy: spd * Math.sin(angle) + tang * Math.cos(angle),
+                    color: getColor(i),
+                    radius: r,
+                    noLabel: true,
+                }));
+            }
+        }
+
+
+        addShell(25, 0.3, kickSpeed * 0.55, kickSpeed * 0.4, 0.5, 4, function(i) {
+            return ['#ffffff','#ffeecc','#ffdd99','#ff9f43'][i % 4];
+        });
+
+        addShell(45, 0.8, kickSpeed*0.85, kickSpeed*0.55, 0.28, 3, function(i) {
+            return ['#ff9f43','#ee5a24','#ff7700','#ff6633'][i % 4];
+        });
+
+        addShell(55, 1.5, kickSpeed*1.15, kickSpeed*0.65, 0.15, 2, function(i) {
+            return ['#ee5a24','#c0392b','#e84393','#ff2244'][i % 4];
+        });
+
+        addShell(30, 2.2, kickSpeed*1.7, kickSpeed*0.7, 0.06, 2, function(i) {
+            return ['#ff8fa3','#ffaacc','#cc44ff','#aa88ff'][i % 4];
+        });
+
+        return list;
+    },
+};
 // canvas
 var canvas = document.getElementById('simCanvas');
 var ctx = canvas.getContext('2d');
@@ -867,92 +990,91 @@ function drawScene(bodies) {
 
     // trails
     if (showTrails) {
-    for (i = 0; i < bodies.length; i++) {
-        var b = bodies[i];
-        if (!b.alive) continue;
-        if (b.history.length < 2) continue;
-        for (var j = 1; j < b.history.length; j++) {
-            var p0 = b.history[j - 1];
-            var p1 = b.history[j];
-            var maxAge = Math.max(p0.age, p1.age, 1);
-            if (maxAge > 600) continue; // fade out old trails
-            var trailAlpha = 0.5 * (1 - maxAge / 600);
-            if (trailAlpha <= 0.02) continue;
+        for (i = 0; i < bodies.length; i++) {
+            var b = bodies[i];
+            if (!b.alive) continue;
+            if (b.history.length < 2) continue;
+            for (var j = 1; j < b.history.length; j++) {
+                var p0 = b.history[j - 1];
+                var p1 = b.history[j];
+                var maxAge = Math.max(p0.age, p1.age, 1);
+                if (maxAge > 600) continue; // fade out old trails
+                var trailAlpha = 0.5 * (1 - maxAge / 600);
+                if (trailAlpha <= 0.02) continue;
 
-            var s0 = toScreen(p0.x, p0.y);
-            var s1 = toScreen(p1.x, p1.y);
-            var alphaInt = Math.round(trailAlpha * 255);
-            var alphaHex = alphaInt.toString(16);
-            if (alphaHex.length === 1) alphaHex = '0' + alphaHex;
+                var s0 = toScreen(p0.x, p0.y);
+                var s1 = toScreen(p1.x, p1.y);
+                var alphaInt = Math.round(trailAlpha * 255);
+                var alphaHex = alphaInt.toString(16);
+                if (alphaHex.length === 1) alphaHex = '0' + alphaHex;
+                ctx.beginPath();
+                ctx.moveTo(s0.x, s0.y);
+                ctx.lineTo(s1.x, s1.y);
+                ctx.strokeStyle = b.color + alphaHex;
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+            }
+        }
+    } 
+
+    // velocity vectors
+    if (showVectors) {
+        for (i = 0; i < bodies.length; i++) {
+            var b = bodies[i];
+            if (!b.alive) continue;
+            var fromPt = toScreen(b.x, b.y);
+            var toPt = {x: fromPt.x + b.vx * camScale * 0.05, y: fromPt.y - b.vy * camScale * 0.05}
+            ctx.strokeStyle = '#ffb83f88';
+            ctx.lineWidth = 1.5;
+
+            ctx.setLineDash([3, 3]);
             ctx.beginPath();
-            ctx.moveTo(s0.x, s0.y);
-            ctx.lineTo(s1.x, s1.y);
-            ctx.strokeStyle = b.color + alphaHex;
-            ctx.lineWidth = 1.2;
+            ctx.moveTo(fromPt.x, fromPt.y);
+            ctx.lineTo(toPt.x, toPt.y);
             ctx.stroke();
+            ctx.setLineDash([]);
+
+            // arrow head
+            var arrowAngle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
+            ctx.fillStyle = '#ffb83f';
+            ctx.beginPath();
+            ctx.moveTo(toPt.x, toPt.y);
+            ctx.lineTo(toPt.x - 6 * Math.cos(arrowAngle - 0.4), toPt.y - 6 * Math.sin(arrowAngle - 0.4));
+            ctx.lineTo(toPt.x - 6 * Math.cos(arrowAngle + 0.4), toPt.y - 6 * Math.sin(arrowAngle + 0.4));
+            ctx.closePath();
+            ctx.fill();
         }
     }
-}
 
-// velocity vectors
-if (showVectors) {
+    //draw bodies
     for (i = 0; i < bodies.length; i++) {
         var b = bodies[i];
         if (!b.alive) continue;
-        var fromPt = toScreen(b.x, b.y);
-        var toPt = {x: fromPt.x + b.vx * camScale * 0.025, y: fromPt.y - b.vy * camScale * 0.025}
-        ctx.strokeStyle = '#ffb83f88';
-        ctx.lineWidth = 1.5;
-
-        ctx.setLineDash([3, 3]);
+        var pos = toScreen(b.x, b.y);
+        var r = b.radius;
+        if (r < 3) r = 3;
+        
+        // glow effect
+        var glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r * 3);
+        glow.addColorStop(0, b.color + '55');
+        glow.addColorStop(1, 'transparent');
         ctx.beginPath();
-        ctx.moveTo(fromPt.x, fromPt.y);
-        ctx.lineTo(toPt.x, toPt.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // arrow head
-        var arrowAngle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x);
-        ctx.fillStyle = '#ffb83f';
-        ctx.beginPath();
-        ctx.moveTo(toPt.x, toPt.y);
-        ctx.lineTo(toPt.x - 6 * Math.cos(arrowAngle - 0.4), toPt.y - 6 * Math.sin(arrowAngle - 0.4));
-        ctx.lineTo(toPt.x - 6 * Math.cos(arrowAngle + 0.4), toPt.y - 6 * Math.sin(arrowAngle + 0.4));
-        ctx.closePath();
+        ctx.arc(pos.x, pos.y, r * 3, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
         ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = b.color;
+        ctx.fill();
+
+        if (showLabels && !b.noLabel) {
+            ctx.font = '10px IBM Plex Mono, monospace';
+            ctx.fillStyle = 'rgba(205, 213, 224, 0.7)';
+            ctx.textAlign = 'left';
+            ctx.fillText(b.name, pos.x + r + 4, pos.y + 4);
+        }
     }
-}
-
-//draw bodies
-for (i = 0; i < bodies.length; i++) {
-    var b = bodies[i];
-    if (!b.alive) continue;
-    var pos = toScreen(b.x, b.y);
-    var r = b.radius;
-    if (r < 3) r = 3;
-    
-    // glow effect
-    var glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, r * 3);
-    glow.addColorStop(0, b.color + '55');
-    glow.addColorStop(1, 'transparent');
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, r * 3, 0, Math.PI * 2);
-    ctx.fillStyle = glow;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = b.color;
-    ctx.fill();
-
-    if (showLabels) {
-        ctx.font = '10px IBM Plex Mono, monospace';
-        ctx.fillStyle = 'rgba(205, 213, 224, 0.7)';
-        ctx.textAlign = 'left';
-        ctx.fillText(b.name, pos.x + r + 4, pos.y + 4);
-    }
-}
-
 }
 
 var simTime = 0; 
@@ -1164,6 +1286,19 @@ document.getElementById('togBH').addEventListener('change', function(e) {
     useBH = e.target.checked;
 });
 
+
+var DENSE_PRESETS = {
+    'galaxy-collision': {
+        speedExp: 2, 
+        scale: 18,
+        softening: 0.15
+    },
+    'supernova': { 
+        speedExp: 1.7,
+        scale: 32,
+        softening: 0.05
+    }
+};
 function loadPreset(name) {
     currentPreset = name;
     bodies = PRESETS[name]();
@@ -1171,43 +1306,48 @@ function loadPreset(name) {
     lastFrame = null;
     initialEnergy = null;
 
-    resizeCanvas();
+    if (DENSE_PRESETS[name]) {
+        var cfg = DENSE_PRESETS[name];
+        useVerlet = true;
+        useBH = true;
+        document.getElementById('togVerlet').checked = true;
+        document.getElementById('togBH').checked = true;
+        softening = cfg.softening;
+        softeningSquared = softening * softening;
+        speedMult = Math.pow(10, cfg.speedExp); 
+        document.getElementById('speedSlider').value = cfg.speedExp;
+        document.getElementById('speedVal').textContent = speedMult.toFixed(0) + 'x';
+        resizeCanvas();
+        camScale = cfg.scale;
 
-    if (name === 'solar-system') {
-        camScale = 35;
+    } else {
+        softening = 0.05;
+        softeningSquared = softening * softening;
+        resizeCanvas();
+        if (name == 'solar-system') {
+            camScale = 35;
+        } else if (name == 'binary-star') {
+            camScale = 100;
+        } else if (name == 'figure-8') {
+            camScale = 130;
+            useVerlet = true;
+        } else {
+            camScale = 80;
+        }
     }
-    else if (name === 'binary-star') {
-        camScale = 100;
-    }
-    else if (name === 'figure-8') {
-        camScale = 120;
-    }
-    else {
-        camScale = 80;
-    }
+
 
     camX = getW() / 2;
     camY = getH() / 2;
 
-    if (name == 'figure-8') {
-       useVerlet = true;
-       document.getElementById('togVerlet').checked = true;
+    if (useVerlet) {
+        var accelFn = useBH ? accelBH : accel;
+        var res = accelFn(bodies);
+        for (var i = 0; i < bodies.length; i++) {
+           bodies[i].ax = res.ax[i];
+           bodies[i].ay = res.ay[i];
+        }
     }
-
-    var res = (useBH ? accelBH : accel)(bodies);
-    for (var i = 0; i < bodies.length; i++) {
-        bodies[i].ax = res.ax[i];
-       bodies[i].ay = res.ay[i];
-    }
-
-    //if (useVerlet) {
-    //    var accelFn = useBH ? accelBH : accel;
-     //   var res = accelFn(bodies);
-     //   for (var i = 0; i < bodies.length; i++) {
-     //       bodies[i].ax = res.ax[i];
-     //       bodies[i].ay = res.ay[i];
-     //   }
-    //}
 
     updateBodyList();
 
@@ -1217,17 +1357,24 @@ function loadPreset(name) {
     }
 }
 
+var _lastBodyCount = -1; 
+
 function updateBodyList() {
     var listEl = document.getElementById('bodyList');
     var countEl = document.getElementById('bodyCount');
-    var aliveBodies = [];
-    for (var i = 0; i < bodies.length; i++) {
-        if (bodies[i].alive) aliveBodies.push(bodies[i]);
-    }
+    var aliveBodies = bodies.filter(function(b) { return b.alive; });
+    countEl.textContent = aliveBodies.length + ' BODIES';
 
+    if (aliveBodies.length === _lastBodyCount) return;
+    _lastBodyCount = aliveBodies.length;
+
+    var show = aliveBodies.length > 60
+    ? aliveBodies.filter(function(b) { return !b.noLabel; })
+    : aliveBodies;
     var html = '';
-    for (var i = 0; i < aliveBodies.length; i++) {
-        var b = aliveBodies[i];
+    for (var i = 0; i < bodies.length; i++) {
+        var b = bodies[i];
+        if (!b.alive) continue;
         html += '<div class="body-row">';
         html += '<div class="body-dot" style="background:' + b.color + '"></div>';
         html += '<span class="body-name">' + b.name + '</span>';
@@ -1235,7 +1382,6 @@ function updateBodyList() {
         html += '</div>';
     }
     listEl.innerHTML = html;
-    countEl.textContent = aliveBodies.length + ' BODIES';
 }
 
 function updateStats() {
@@ -1302,8 +1448,9 @@ function animate(ts) {
 
     if (running) {
         var dt = FIXED_DT * speedMult;
-        if (dt > MAX_DT) dt = MAX_DT; 
-        simStep(bodies, dt, 4);
+        if (dt > MAX_DT) dt = MAX_DT;
+        var sub = useVerlet ? 8 : 4;
+        simStep(bodies, dt, sub);
         simTime += dt;
     }
 
