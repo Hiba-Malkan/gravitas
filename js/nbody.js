@@ -802,11 +802,12 @@ var PRESETS = {
                 var count = counts[i];
                 var vCirc = Math.sqrt(G * (coreMass + starMass) / radius);
                 var phaseOff = Math.random() * 2 * Math.PI;
+                var spiralTwist = i * 0.3;
                 for (var j = 0; j < count; j++) {
-                    var angle=phaseOff + (2 * Math.PI * j / count) 
-                    var sx = cx + radius * Math.cos(angle);
-                    var sy = cy + radius * Math.sin(angle);
-                    var tx = -Math.sin(angle);
+                    var angle=phaseOff +spiralTwist+(2 * Math.PI * j / count) 
+                    var sx = cx + radius * Math.cos(angle) + (Math.random() - 0.5) * 0.4;
+                    var sy = cy + radius * Math.sin(angle) + (Math.random() - 0.5) * 0.4;
+                    var tx = -Math.sin(angle);                    
                     var ty = Math.cos(angle);
                     var col=(Math.random() < 0.5)? palA[ Math.floor( Math.random() * palA.length)]:palB[Math.floor( Math.random()*palB.length)];
 
