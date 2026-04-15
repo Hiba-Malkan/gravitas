@@ -523,7 +523,6 @@ function simStep(bodies, dt, subSteps) {
         
         if (showTrails) {
             var trailSkip = (currentPreset === 'galaxy-collision') ? 5 : 1;
-
             if (frameCount % trailSkip === 0) {
                     for (var i = 0; i < bodies.length; i++) {
                         if (bodies[i].alive) {
@@ -532,6 +531,7 @@ function simStep(bodies, dt, subSteps) {
                     }
             }
         }
+        
     for (var i = 0; i < bodies.length; i++) {
         if (!bodies[i].alive) continue;
         for (var p = 0; p < bodies[i].history.length; p++) {
@@ -949,18 +949,6 @@ function fromScreen(sx, sy) {
     var wx = (sx - camX) / camScale;
     var wy = -(sy - camY) / camScale;
     return {x: wx, y: wy};
-}
-
-// background stars
-var STARS = [];
-for (var i = 0; i < 220; i++) {
-    STARS.push({
-        x: Math.random(),
-        y: Math.random(),
-        r: Math.random() * 1.2 + 0.2,
-        a: Math.random() * Math.PI * 2,
-        spd: Math.random() * 0.003 + 0.001
-    });
 }
 
 // render
@@ -1384,7 +1372,7 @@ function loadPreset(name) {
         }
     }
 
-    if (name === 'figure-8') {
+    if (name === 'figure-8') { 
         useBH = false;
         bhToggle.checked = false;
         bhToggle.parentElement.parentElement.style.display = 'none';
