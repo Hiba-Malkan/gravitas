@@ -34,6 +34,7 @@ function Body(opts) {
     this.radius = opts.radius;
     this.fixed = opts.fixed || false;
     this.noLabel = opts.noLabel || false;
+    this.noMerge = opts.noMerge || false;
     this.alive = true;
     this.history = []; 
     this.maxTrail = 300;
@@ -443,13 +444,14 @@ function mergeCollisions(bodies){
     var i, j;
 
     // check all pairs
-    for(i=0; i<bodies.length; i++){
-        if(!bodies[i].alive)continue;
-        for(j=i+1; j<bodies.length; j++){
-            if(!bodies[j].alive)continue;
+    for (i = 0; i < bodies.length; i++) {
+        if (!bodies[i].alive) continue;
+        for (j = i + 1; j < bodies.length; j++) {
+            if (!bodies[j].alive) continue;
+            if (bodies[i].noMerge || bodies[j].noMerge) continue;
             var dx = bodies[j].x - bodies[i].x;
             var dy = bodies[j].y - bodies[i].y;
-            var dist = Math.sqrt(dx*dx + dy*dy);
+            var dist = Math.sqrt(dx * dx + dy * dy);
             var minDist = Math.max((bodies[i].radius + bodies[j].radius) * 0.0005, 0.01); // collision threshold
             if (dist < minDist) {
 
@@ -827,6 +829,7 @@ var PRESETS = {
                         color: col,
                         radius: 2,
                         noLabel: true,
+                        maxTrail: 100,
                     }));
                 }
             }
@@ -850,6 +853,7 @@ var PRESETS = {
             vy: 0,
             color: '#ffffff',
             radius: 6,
+            noMerge: true,
         }));
 
         function addShell (n, radius, speedBase, speedRand, mass, r, getColor) {
@@ -868,25 +872,35 @@ var PRESETS = {
                     color: getColor(i),
                     radius: r,
                     noLabel: true,
+                    noMerge: true,
+                    maxTrail: 50,
                 }));
             }
         }
 
 
-        addShell(25, 0.3, kickSpeed * 0.55, kickSpeed * 0.4, 0.5, 4, function(i) {
+        addShell(25, 1.5, kickSpeed * 0.55, kickSpeed * 0.4, 0.5, 4, function(i) {
             return ['#ffffff','#ffeecc','#ffdd99','#ff9f43'][i % 4];
         });
 
-        addShell(45, 0.8, kickSpeed*0.85, kickSpeed*0.55, 0.28, 3, function(i) {
+        addShell(45, 3.0, kickSpeed*0.85, kickSpeed*0.55, 0.28, 3, function(i) {
             return ['#ff9f43','#ee5a24','#ff7700','#ff6633'][i % 4];
         });
 
-        addShell(55, 1.5, kickSpeed*1.15, kickSpeed*0.65, 0.15, 2, function(i) {
+        addShell(55, 5.5, kickSpeed*1.15, kickSpeed*0.65, 0.15, 2, function(i) {
             return ['#ee5a24','#c0392b','#e84393','#ff2244'][i % 4];
         });
 
-        addShell(30, 2.2, kickSpeed*1.7, kickSpeed*0.7, 0.06, 2, function(i) {
+        addShell(30, 8.0, kickSpeed*1.7, kickSpeed*0.7, 0.06, 2, function(i) {
             return ['#ff8fa3','#ffaacc','#cc44ff','#aa88ff'][i % 4];
+        });
+
+        addShell(35, 0.15, kickSpeed * 0.3, kickSpeed * 0.2, 0.8, 4, function(i) {
+            return ['#ffffff','#fffde0','#ffeeaa','#ffdd66'][i % 4];
+        });
+
+        addShell(40, 3.2, kickSpeed * 2.2, kickSpeed * 0.8, 0.04, 2, function(i) {
+            return ['#cc88ff','#aa66ff','#8844ee','#6622cc'][i % 4];
         });
 
         return list;
@@ -1010,6 +1024,11 @@ function drawScene(bodies) {
                 var trailAlpha = 0.5 * (1 - maxAge / 600);
                 if (trailAlpha <= 0.02) continue;
 
+                var maxAge = Math.max(p0.age, p1.age, 1);
+                var fadeLimit = (currentPreset === 'supernova') ? 200 : 600;
+                if (maxAge > fadeLimit) continue;
+                var trailAlpha = 0.5 * (1 - maxAge / fadeLimit);
+
                 var s0 = toScreen(p0.x, p0.y);
                 var s1 = toScreen(p1.x, p1.y);
                 var alphaInt = Math.round(trailAlpha * 255);
@@ -1127,6 +1146,9 @@ window.addEventListener('mousemove', function(e) {
     var dy = oy - dragStartY;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
         hasDragged = true;
+
+        var togAutoZoom = document.getElementById('togAutoZoom');
+        if (togAutoZoom) togAutoZoom.checked = false;
     }
 
     camX += dx;
@@ -1143,6 +1165,8 @@ canvas.addEventListener("wheel", function(e) {
     camX = e.offsetX - (e.offsetX - camX) * factor;
     camY = e.offsetY - (e.offsetY - camY) * factor;
     camScale *= factor;
+    var togAutoZoom = document.getElementById('togAutoZoom');
+    if (togAutoZoom) togAutoZoom.checked = false;
 }, {passive: false});
 
 // colors for new bodies
@@ -1292,6 +1316,11 @@ document.getElementById('togVerlet').addEventListener('change', function(e) {
 });
 
 document.getElementById('togBH').addEventListener('change', function(e) {
+    if (currentPreset === 'figure-8') {
+        e.target.checked = false;
+        useBH = false;
+        return;
+    }
     useBH = e.target.checked;
 });
 
@@ -1302,12 +1331,23 @@ var DENSE_PRESETS = {
         scale: 18,
         softening: 0.15
     },
+    'figure-8': {
+        speedExp: 0.6,
+        scale: 130
+    },
     'supernova': { 
-        speedExp: 1.7,
+        speedExp: 0.48,
         scale: 32,
         softening: 0.05
     }
 };
+
+function updateAutoZoomVisibility() {
+    var wrap = document.getElementById('autoZoomWrap');
+    if (!wrap) return;
+    wrap.style.display = (currentPreset === 'supernova') ? 'block' : 'none';
+}
+
 function loadPreset(name) {
     currentPreset = name;
     bodies = PRESETS[name]();
@@ -1315,13 +1355,15 @@ function loadPreset(name) {
     lastFrame = null;
     initialEnergy = null;
 
+    var bhToggle = document.getElementById('togBH');
+
     if (DENSE_PRESETS[name]) {
         var cfg = DENSE_PRESETS[name];
         useVerlet = true;
         useBH = true;
         document.getElementById('togVerlet').checked = true;
         document.getElementById('togBH').checked = true;
-        softening = cfg.softening;
+        softening = cfg.softening || 0.05;
         softeningSquared = softening * softening;
         speedMult = Math.pow(10, cfg.speedExp); 
         document.getElementById('speedSlider').value = cfg.speedExp;
@@ -1337,14 +1379,27 @@ function loadPreset(name) {
             camScale = 35;
         } else if (name == 'binary-star') {
             camScale = 100;
-        } else if (name == 'figure-8') {
-            camScale = 130;
-            useVerlet = true;
         } else {
             camScale = 80;
         }
     }
 
+    if (name === 'figure-8') {
+        useBH = false;
+        bhToggle.checked = false;
+        bhToggle.parentElement.parentElement.style.display = 'none';
+    } else {
+        bhToggle.parentElement.parentElement.style.display = 'block';
+    }
+
+    // for supernova auto enable grid so that the auto zoom scale can be put in reference
+    if (name === 'supernova') {
+        showGrid = true;
+        document.getElementById('togGrid').checked = true;
+    } else {
+        showGrid = false;
+        document.getElementById('togGrid').checked = false;
+    }
 
     camX = getW() / 2;
     camY = getH() / 2;
@@ -1364,6 +1419,8 @@ function loadPreset(name) {
     for (var i = 0; i < btns.length; i++) {
         btns[i].classList.toggle('active', btns[i].dataset.preset === name);
     }
+
+    updateAutoZoomVisibility();
 }
 
 var _lastBodyCount = -1; 
@@ -1454,7 +1511,6 @@ function animate(ts) {
     }
 
     lastFrame = ts;
-
     if (running) {
         var dt = FIXED_DT * speedMult;
         if (dt > MAX_DT) dt = MAX_DT;
@@ -1462,6 +1518,22 @@ function animate(ts) {
         simStep(bodies, dt, sub);
         simTime += dt;
     }
+
+    var togAutoZoom = document.getElementById('togAutoZoom');
+    if (currentPreset === 'supernova' && togAutoZoom && togAutoZoom.checked) {
+        var aliveFrag = bodies.filter(function(b) { return b.alive; });
+        var maxDist = 0;
+        for (var i = 0; i < aliveFrag.length; i++) {
+            var d = Math.sqrt(aliveFrag[i].x * aliveFrag[i].x + aliveFrag[i].y * aliveFrag[i].y);
+            if (d > maxDist) maxDist = d;
+        }
+        var targetScale = (getW() * 0.35) / Math.max(maxDist, 0.1);
+        targetScale = Math.max(2, Math.min(targetScale, 200));
+        camScale += (targetScale - camScale) * 0.02;
+        camX = getW() / 2;
+        camY = getH() / 2;
+    }
+
 
     // render current state
     drawScene(bodies);
