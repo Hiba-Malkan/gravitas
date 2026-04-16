@@ -293,6 +293,19 @@ function bhInsert(node, body, depth) {
         node.body = body;
         return;
     }
+
+    // Prevent infinite subdivision for duplicate positions
+    if (
+        node.body &&
+        Math.abs(node.body.x - body.x) < 1e-12 &&
+        Math.abs(node.body.y - body.y) < 1e-12
+    ) {
+        node.mass += body.mass;
+        node.comX = (node.comX * (node.mass - body.mass) + body.x * body.mass) / node.mass;
+        node.comY = (node.comY * (node.mass - body.mass) + body.y * body.mass) / node.mass;
+        return;
+    }
+
     var totalM = node.mass + body.mass;
     node.comX = (node.comX * node.mass + body.x * body.mass) / totalM;
     node.comY = (node.comY * node.mass + body.y * body.mass) / totalM;
@@ -308,22 +321,22 @@ function bhInsert(node, body, depth) {
 function bhSubInsert(node, body, depth) {
     depth = depth || 0;
     if (depth > 50) return;
-    var half = node.size * 0.5;
+    var quarter = node.size * 0.5;
     var child;
     if (body.x <= node.cx) {
         if (body.y >= node.cy) {
-            if (!node.nw) node.nw = new BHNode(node.cx-half, node.cy+half, half);
+            if (!node.nw) node.nw = new BHNode(node.cx-quarter, node.cy+quarter, quarter);
             child = node.nw;
         } else {
-            if (!node.sw) node.sw = new BHNode(node.cx-half, node.cy-half, half);
+            if (!node.sw) node.sw = new BHNode(node.cx-quarter, node.cy-quarter, quarter);
             child = node.sw;
         }
     } else {
         if (body.y >= node.cy) {
-            if (!node.ne) node.ne = new BHNode(node.cx+half, node.cy+half, half);
+            if (!node.ne) node.ne = new BHNode(node.cx+quarter, node.cy+quarter, quarter);
             child = node.ne;
         } else {
-            if (!node.se) node.se = new BHNode(node.cx+half, node.cy-half, half);
+            if (!node.se) node.se = new BHNode(node.cx+quarter, node.cy-quarter, quarter);
             child = node.se;
         }
     }
@@ -341,7 +354,7 @@ function bhAccel(node, body, out) {
     var dy = node.comY - body.y;
     var distSq = dx*dx + dy*dy + softeningSquared;
     var dist = Math.sqrt(distSq);
-    if (node.body !== null || (node.size / dist) < THETA) {
+    if (node.body !== null || ((2 * node.size) / dist) < THETA) {
         var f = G * node.mass / (distSq * dist);
         out[0] += f * dx;
         out[1] += f * dy;
@@ -378,7 +391,8 @@ function buildBHTree(bodies) {
     }
     var cx = (minX + maxX) * 0.5;
     var cy = (minY + maxY) * 0.5;
-    var size = Math.max(maxX - minX, maxY - minY) * 0.5 + 1;
+    var span = Math.max(maxX - minX, maxY - minY);
+    var size = span * 0.6 + 2;
     var root = new BHNode(cx, cy, size);
     for (var j = 0; j < alive.length; j++) {
         bhInsert(root, alive[j], 0);
