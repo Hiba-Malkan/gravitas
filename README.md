@@ -21,8 +21,26 @@ The n-body gravity problem asks: given N objects that all gravitationally attrac
 
 Unlike the two-body problem (one planet and one star), there is no closed form solution for N ≥ 3 bodies, so you have to simulate it step by step. 
 
-This simulation runs the full solar system, in which, every planet exerts a gravitational force on every other planet, in every frame, and the positions are updated accordingly. 
-You can zoom, pan, add new bodies by clicking the canvas and see how the affect the system (collisions, merges, ejected out of system), and switch to a binary star system as well. 
+This simulation has 6 presets, for all presets, you can zoom, pan and add new bodies by clicking the canvas to see how they affect the system (collision, merges, ejected out of the system). You can also toggle trails, velocity vectors, grid, and switch between RK4 and Verlet integrator.
+
+### Solar System
+The solar system presets lets you run the full solar system, in which, every planet exerts a gravitational force on every other planet, in every frame, and the positions are updated accordingly. 
+
+### Binary Stars
+Most of the stars in the universe aren't alone. They exist in binary systems, two stars orbiting their shared centre of mass (barycentre), not each other directly. This preset has two stars of different masses orbiting their barycentre.
+
+### Figure-8 
+For this, let's go back to the question asked for N-body Simulation as a whole, but taking n as 3. 
+
+The three-body problem asks: given three objects who exert a gravitational pull on each other, how do they move? 
+In general, we don't have a closed=form solution or asnwer for that, as stated at the beginning. But in 2000, Chanciner and Montgomery proved that there exists one special solution where three equal masses follow each other around a 'figure-8' path forever, and its also perfectly periodic! This simulation runs this.
+
+### Galaxy Collision
+A galaxy is a large collection of stars orbiting a massive core at the centre. This simulation has two such galaxies, each with about 280 stars, on a path to collision. As they pass through each other, the gravitational pull of one galaxy disrupts the orbits of the stars in the other galax and flings them out into tidal trails and streams.
+
+### Supernova
+When a massive star exhausts its fuel, the core collapses and the outer later are blasted outward. Left behind, is a dense remanant (neutron star or black hole). This simulation starts right after that explosion, with a
+remanant at the centre, and shells of debris flying outward. The remanant's gravits gradually pulls some of it back, but the fastest fragments escape. 
 
 ### Hohmann Transfer 
 
@@ -77,6 +95,18 @@ $$k_1 = f(t, y) \quad k_2 = f\!\left(t + \tfrac{h}{2},\, y + \tfrac{h}{2}k_1\rig
 $$y_{n+1} = y_n + \frac{h}{6}(k_1 + 2k_2 + 2k_3 + k_4)$$
 
 4th order Runge-Kutta integrator evaluates the derivative at 4 points per step and takes a weighed average. This keeps orbits stable long term unlike the Euler method I was previously using. 
+
+### Velocity Verlet Integration
+$$x_{n+1} = x_n + v_n \Delta t + \frac{1}{2}a_n \Delta t^2$$
+
+$$v_{n+1} = v_n + \frac{a_n + a_{n+1}}{2}\Delta t$$
+
+This is an alternative integrator to RK4. The difference is how the velocity is updated. Instead of using only the accelaration at the start of the step, it takes the average of the accelarations at the start and end of the step. This makes it symplectic, which means it preserves the geometric structure of the physics, so energy doesn't leak in and out of the system the way is does with non-symplectic ways like RK4. Verlet is suited for large body systems, like supernova and galaxy collision, where RK4 would be very slow. 
+
+### Barnes-Hut Algorithm
+$$\frac{s}{d} < \theta$$
+
+In a n-body simulation every body pulls every other body. We already know that, but that means n² force calculation per step, which becomes very slow for a large n. Hence why, we need Barnes-Hut. It solves this problem by grouping distant bodies together. All the bodies are inserted into a quadtree (a tree that recursively divides 2D space into four cells). When calculating the force on a body, if the cell is far enough away the entire cell is approximated as a single body sitting at its centre of mass. This brings it from O(n²) to O(n log n), which makes galaxy collisions and supernova actually be able to run in a browser and not lag a lot. 
 
 ### Vis-Viva Equation 
 
