@@ -1391,7 +1391,7 @@ function loadPreset(name) {
         bhToggle.checked = false;
         bhToggle.parentElement.parentElement.style.display = 'none';
     } else {
-        bhToggle.parentElement.parentElement.style.display = 'block';
+        bhToggle.parentElement.parentElement.style.display = 'flex';
     }
 
     // for supernova auto enable grid so that the auto zoom scale can be put in reference
