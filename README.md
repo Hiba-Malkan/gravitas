@@ -21,7 +21,7 @@ The n-body gravity problem asks: given N objects that all gravitationally attrac
 
 Unlike the two-body problem (one planet and one star), there is no closed form solution for N ≥ 3 bodies, so you have to simulate it step by step. 
 
-This simulation has 6 presets, for all presets, you can zoom, pan and add new bodies by clicking the canvas to see how they affect the system (collision, merges, ejected out of the system). You can also toggle trails, velocity vectors, grid, and switch between RK4 and Verlet integrator.
+This simulation has 7 presets, for all presets, you can zoom, pan and add new bodies by clicking the canvas to see how they affect the system (collision, merges, ejected out of the system). You can also toggle trails, velocity vectors, grid, and switch between RK4 and Verlet integrator.
 
 ### Solar System
 The solar system presets lets you run the full solar system, in which, every planet exerts a gravitational force on every other planet, in every frame, and the positions are updated accordingly. 
@@ -41,6 +41,9 @@ A galaxy is a large collection of stars orbiting a massive core at the centre. T
 ### Supernova
 When a massive star exhausts its fuel, the core collapses and the outer later are blasted outward. Left behind, is a dense remanant (neutron star or black hole). This simulation starts right after that explosion, with a
 remanant at the centre, and shells of debris flying outward. The remanant's gravits gradually pulls some of it back, but the fastest fragments escape. 
+
+### Pulsar
+A pulsar is a really fast rotating neutron star that fires jets of charged particles from its magentic poles. This simulation has a fixed neutron star at the centre with two opposite jets, and an accretion disk of matter falling inward orbiting around it.  
 
 ### Hohmann Transfer 
 
@@ -106,10 +109,14 @@ This is an alternative integrator to RK4. The difference is how the velocity is 
 ### Barnes-Hut Algorithm
 $$\frac{s}{d} < \theta$$
 
-In a n-body simulation every body pulls every other body. We already know that, but that means n² force calculation per step, which becomes very slow for a large n. Hence why, we need Barnes-Hut. It solves this problem by grouping distant bodies together. All the bodies are inserted into a quadtree (a tree that recursively divides 2D space into four cells). When calculating the force on a body, if the cell is far enough away the entire cell is approximated as a single body sitting at its centre of mass. This brings it from O(n²) to O(n log n), which makes galaxy collisions and supernova actually be able to run in a browser and not lag a lot. 
+In a n-body simulation every body pulls every other body. We already know that, but that means n² force calculation per step, which becomes very slow for a large n. Hence why, we need Barnes-Hut. It solves this problem by grouping distant bodies together. All the bodies are inserted into a quadtree (a tree that recursively divides 2D space into four cells). When calculating the force on a body, if the cell is far enough away the entire cell is approximated as a single body sitting at its centre of mass. This brings it from O(n²) to O(n log n), which makes galaxy collisions and supernova actually be able to run in a browser and not lag a lot.
+
+### Circular Orbital Velocity
+$$v_{circ} = \sqrt{\frac{GM}{r}}$$
+
+Used to set the orbital speed for each body of the accretion disk. A small eccentricity is also applied so that the orbits are slightly elliptical rather than perfectly circular. 
 
 ### Vis-Viva Equation 
-
 $$v = \sqrt{GM\left(\frac{2}{r} - \frac{1}{a}\right)}$$
 
 Vis-viva equation gives the speed of an object at distance r from the central body, in an orbit with a semi-major axis, a. This is used for all Hohmann Transfer velocity calculations. For a circular orbit r = a, so the equation simplifies to v = √(GM/r).
