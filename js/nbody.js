@@ -919,6 +919,162 @@ var PRESETS = {
 
         return list;
     },
+    'pulsar': function() {
+        var list = [];
+
+        // neutron star
+        list.push(new Body({
+            name: 'Neutron Star',
+            mass: 2.0,
+            x: 0, y: 0, vx: 0, vy: 0,
+            color: '#ffffff',
+            radius: 6,
+            fixed: true,
+            noMerge: true
+        }));
+
+        // two opposing jets — streams of particles ejected in opposite directions
+        // with slight angular spread that rotates over time (precession baked into initial conditions)
+        var JET_SHELLS = [
+        { 
+            n: 18,
+            r: 0.6,
+            spd: 9.0,
+            spread: 0.18,
+            mass: 0.0008,
+            rad: 2, 
+            colors: ['#ffffff','#e0f0ff','#aaddff'] 
+        },
+        {   
+            n: 22,
+            r: 1.4,
+            spd: 7.5,
+            spread: 0.22,
+            mass: 0.0006,
+            rad: 2, 
+            colors: ['#88ccff','#66aaff','#4488ff'] 
+        },
+        {   
+            n: 20,
+            r: 2.5,
+            spd: 6.0,
+            spread: 0.28,
+            mass: 0.0004,
+            rad: 2,
+            colors: ['#4466ff','#6644cc','#8833aa'] 
+        },
+        {   
+            n: 16,
+            r: 4.0,
+            spd: 4.5,
+            spread: 0.35,
+            mass: 0.0003,
+            rad: 2,
+            colors: ['#aa44cc','#cc33aa','#ee2288'] 
+        },
+        {   
+            n: 16,
+            r: 4.0,
+            spd: 4.5,
+            spread: 0.35,
+            mass: 0.0003,
+            rad: 2, 
+            colors: ['#aa44cc','#cc33aa','#ee2288'] 
+        },
+        {   
+            n: 12,
+            r: 6.0,
+            spd: 3.0,
+            spread: 0.4,
+            mass: 0.0002,
+            rad: 2,
+            colors: ['#ff2266','#ff4444','#ff6622']
+        }
+        ];
+
+        var precessionStep = 0.08;
+
+        JET_SHELLS.forEach(function(s, si) {
+            var precAngle = si * precessionStep;
+
+            // up jet
+            for (var i = 0; i < s.n; i++) {
+            var jitter = (Math.random() - 0.5) * s.spread;
+            var angle = Math.PI / 2 + precAngle + jitter;
+            var spd = s.spd * (0.88 + Math.random() * 0.24);
+            var ox = s.r * Math.cos(angle + Math.PI / 2) * (Math.random() - 0.5) * 0.3;
+            var oy = s.r * Math.sin(angle + Math.PI / 2) * (Math.random() - 0.5) * 0.3;
+            list.push(new Body({
+                name: 'jet+',
+                mass: s.mass,
+                x: ox,
+                y: oy + s.r * 0.15 + Math.random() * 0.1,
+                vx: spd * Math.cos(angle) + (Math.random()-0.5) * 0.3,
+                vy: spd * Math.sin(angle) + (Math.random()-0.5) * 0.3,
+                color: s.colors[Math.floor(Math.random() * s.colors.length)],
+                radius: s.rad,
+                noLabel: true,
+                noMerge: true,
+                maxTrail: 35
+                }));
+            }
+
+            // down jet
+            for (var i = 0; i < s.n; i++) {
+            var jitter = (Math.random() - 0.5) * s.spread;
+            var angle = -Math.PI / 2 + precAngle + jitter;
+            var spd = s.spd * (0.88 + Math.random() * 0.24);
+            var ox = s.r * Math.cos(angle + Math.PI / 2) * (Math.random() - 0.5) * 0.3;
+            var oy = s.r * Math.sin(angle + Math.PI / 2) * (Math.random() - 0.5) * 0.3;
+            list.push(new Body({
+                name: 'jet-',
+                mass: s.mass,
+                x: ox,
+                y: oy - (s.r * 0.15 + Math.random() * 0.1),
+                vx: spd * Math.cos(angle) + (Math.random()-0.5) * 0.3,
+                vy: spd * Math.sin(angle) + (Math.random()-0.5) * 0.3,
+                color: s.colors[Math.floor(Math.random() * s.colors.length)],
+                radius: s.rad,
+                noLabel: true,
+                noMerge: true,
+                maxTrail: 35
+                }));
+            }
+        });
+
+        // accretion disk
+        var DISK_RADII  = [1.2, 1.8, 2.4, 3.2, 4.0];
+        var DISK_COUNTS = [14,  18,  22,  26,  20];
+        var DISK_COLORS = ['#ffcc44','#ffaa22','#ff8800','#ee6600','#cc4400'];
+
+        DISK_RADII.forEach(function(r, ri) {
+            var n = DISK_COUNTS[ri];
+            var vCirc = Math.sqrt(G * 2.0 / r);
+            for (var i = 0; i < n; i++) {
+
+                var angle = (2 * Math.PI * i / n) + Math.random() * 0.3;
+                var ecc = Math.random() * 0.25; 
+                var vFactor = Math.sqrt((1 - ecc) / (1 + ecc));
+
+                list.push(new Body({
+                    name: 'disk',
+                    mass: 0.0001,
+                    x: r * Math.cos(angle),
+                    y: r * Math.sin(angle),
+                    vx: -vCirc * vFactor * Math.sin(angle) + (Math.random()-0.5)*0.1,
+                    vy:  vCirc * vFactor * Math.cos(angle) + (Math.random()-0.5)*0.1,
+                    color: DISK_COLORS[ri],
+                    radius: 2,
+                    noLabel: true,
+                    noMerge: true,
+                    maxTrail: 60
+                }));
+            }
+        });
+
+        return list;
+    },
+
 };
 // canvas
 var canvas = document.getElementById('simCanvas');
@@ -1341,13 +1497,18 @@ var DENSE_PRESETS = {
         speedExp: 0.48,
         scale: 32,
         softening: 0.05
+    },
+    'pulsar': { 
+        speedExp: 0.8,
+        scale: 45,
+        softening: 0.04
     }
 };
 
 function updateAutoZoomVisibility() {
     var wrap = document.getElementById('autoZoomWrap');
     if (!wrap) return;
-    wrap.style.display = (currentPreset === 'supernova') ? 'block' : 'none';
+    wrap.style.display = (currentPreset === 'supernova' || currentPreset === 'pulsar') ? 'block' : 'none';
 }
 
 function loadPreset(name) {
@@ -1395,7 +1556,7 @@ function loadPreset(name) {
     }
 
     // for supernova auto enable grid so that the auto zoom scale can be put in reference
-    if (name === 'supernova') {
+    if (name === 'supernova' || name === 'pulsar') {
         showGrid = true;
         document.getElementById('togGrid').checked = true;
     } else {
@@ -1522,7 +1683,7 @@ function animate(ts) {
     }
 
     var togAutoZoom = document.getElementById('togAutoZoom');
-    if (currentPreset === 'supernova' && togAutoZoom && togAutoZoom.checked) {
+    if (currentPreset === 'supernova' || currentPreset === 'pulsar' && togAutoZoom && togAutoZoom.checked) {
         var aliveFrag = bodies.filter(function(b) { return b.alive; });
         var maxDist = 0;
         for (var i = 0; i < aliveFrag.length; i++) {
